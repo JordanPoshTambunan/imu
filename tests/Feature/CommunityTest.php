@@ -105,3 +105,41 @@ it('menolak lampiran dengan tipe yang tidak diizinkan', function () {
         ], ['Accept' => 'application/json'])
         ->assertStatus(422);
 });
+
+it('mengenali link post Instagram dan menormalkannya', function (string $content, ?string $expected) {
+    expect((new GroupMessage(['message_content' => $content]))->instagramUrl())->toBe($expected);
+})->with([
+    ['Info terbaru https://www.instagram.com/p/DAbc123_-x/?igsh=xyz', 'https://www.instagram.com/p/DAbc123_-x/'],
+    ['http://instagram.com/reel/Cq9Z', 'https://www.instagram.com/reel/Cq9Z/'],
+    ['https://www.instagram.com/univ.udayana/p/DgERsxVk4LS/', 'https://www.instagram.com/p/DgERsxVk4LS/'],
+    ['Profil saja https://www.instagram.com/univ.udayana/', null],
+    ['https://evil.com/instagram.com/p/abc', null],
+    ['Tanpa link', null],
+]);
+
+it('menampilkan embed Instagram di halaman komunitas', function () {
+    $message = makeGroupMessage();
+    $message->update(['message_content' => 'Cek https://www.instagram.com/p/DAbc123/']);
+
+    $this->actingAs(User::factory()->create())
+        ->get('/community?group='.$message->group_id)
+        ->assertSee('data-instgrm-permalink="https://www.instagram.com/p/DAbc123/"', false)
+        ->assertSee('instagram.com/embed.js', false);
+});
+
+it('menyembunyikan link Instagram dari teks saat ditampilkan sebagai embed', function (string $content, string $expected) {
+    expect((new GroupMessage(['message_content' => $content]))->contentWithoutInstagramUrl())->toBe($expected);
+})->with([
+    ["Info terbaru dari kampus\nhttps://www.instagram.com/univ.udayana/p/DgERsxVk4LS/", 'Info terbaru dari kampus'],
+    ['https://www.instagram.com/p/DAbc123/?igsh=xyz', ''],
+    ['Tanpa link Instagram https://unud.ac.id', 'Tanpa link Instagram https://unud.ac.id'],
+]);
+
+it('membuat komunitas Menfess Unud sekali saja', function () {
+    User::factory()->create(['role' => 'admin']);
+
+    $this->seed(Database\Seeders\MenfessGroupSeeder::class);
+    $this->seed(Database\Seeders\MenfessGroupSeeder::class);
+
+    expect(ChatGroup::where('name', 'Menfess Unud')->where('is_approved', true)->count())->toBe(1);
+});

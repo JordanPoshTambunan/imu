@@ -4,19 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="icon" type="image/png" href="{{ asset('images/favicon.png') }}">
     <title>@hasSection('title')@yield('title') · @endif I Match U</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        // Tema IMU: navy (#00296b, #003f88, #00509d) + kuning (#fdc500, #ffd500).
+        // Tema IMU: navy (#00296b, #003f88, #00509d) + kuning emas lembut (#f0bd38, #f6cd5c).
         // 50/100 adalah tint terang turunan untuk latar lembut.
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
                         navy: { 50: '#eef3fb', 100: '#d6e2f3', 700: '#00509d', 800: '#003f88', 900: '#00296b' },
-                        gold: { 100: '#fff6cc', 400: '#ffd500', 500: '#fdc500' },
+                        gold: { 100: '#fcefcf', 400: '#f6cd5c', 500: '#f0bd38' },
                     },
                     fontFamily: { sans: ['Poppins', 'sans-serif'] },
                 },
@@ -66,9 +67,9 @@
 
     <header class="sticky top-0 z-40 bg-navy-900 text-white shadow-md">
         <div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
-            <a href="{{ $user ? route('home') : route('login') }}" class="flex items-center gap-2 text-lg font-bold tracking-wide whitespace-nowrap">
-                <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-gold-500 text-navy-900"><i class="fas fa-handshake-simple text-sm"></i></span>
-                I MATCH U
+            <a href="{{ $user ? route('home') : route('login') }}" class="flex items-center gap-2.5 text-lg font-bold whitespace-nowrap" aria-label="I Match U, ke beranda">
+                <img src="{{ asset('images/logo-mark.png') }}" alt="" class="h-9 w-auto">
+                <span>I match <span class="text-gold-400">U</span></span>
             </a>
 
             @if ($user && ! $isOnboarding)

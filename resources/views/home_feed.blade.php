@@ -61,7 +61,10 @@
                             <span class="font-medium text-navy-700">{{ $post->group->name }}</span>
                             <span class="text-gray-400">· {{ $post->created_at->diffForHumans() }}</span>
                         </p>
-                        <p class="mt-1 line-clamp-2 whitespace-pre-line text-sm text-gray-700">{{ $post->message_content }}</p>
+                        <p class="mt-1 line-clamp-2 whitespace-pre-line text-sm text-gray-700">{{ $post->contentWithoutInstagramUrl() }}</p>
+                        @if ($post->instagramUrl())
+                            <p class="mt-1 text-xs font-medium text-navy-700"><i class="fab fa-instagram mr-1"></i>Post Instagram</p>
+                        @endif
                     </div>
                 </a>
             @empty
