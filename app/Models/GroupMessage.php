@@ -149,6 +149,32 @@ class GroupMessage extends Model
     }
 
     /**
+     * Link post/reel Instagram pertama di isi pesan, dinormalisasi untuk embed.js.
+     * Mengenali instagram.com/[username/]p|reel|tv/{kode} (web menyisipkan username),
+     * dan hanya membangun ulang dari karakter aman, jadi aman dipakai di atribut HTML.
+     */
+    public function instagramUrl(): ?string
+    {
+        if (! preg_match('~https?://(?:www\.)?instagram\.com/(?:[A-Za-z0-9._]+/)?(p|reel|tv)/([A-Za-z0-9_-]+)~', (string) $this->message_content, $match)) {
+            return null;
+        }
+
+        return "https://www.instagram.com/{$match[1]}/{$match[2]}/";
+    }
+
+    /**
+     * Isi pesan tanpa link Instagram yang sudah ditampilkan sebagai embed.
+     */
+    public function contentWithoutInstagramUrl(): string
+    {
+        if (! $this->instagramUrl()) {
+            return (string) $this->message_content;
+        }
+
+        return trim(preg_replace('~https?://(?:www\.)?instagram\.com/(?:[A-Za-z0-9._]+/)?(?:p|reel|tv)/[A-Za-z0-9_-]+\S*~', '', $this->message_content, 1));
+    }
+
+    /**
      * Check if message has attachment
      */
     public function hasAttachment()

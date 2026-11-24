@@ -53,7 +53,8 @@
                         <p class="text-sm text-gray-600">Posting sebagai <span class="font-semibold text-navy-800">{{ ucfirst($currentUser->role) }}</span></p>
                     </div>
                     <label for="group-message-input" class="sr-only">Isi postingan</label>
-                    <textarea id="group-message-input" rows="3" maxlength="5000" class="input resize-y" placeholder="Bagikan pengumuman atau info penting…"></textarea>
+                    <textarea id="group-message-input" rows="3" maxlength="5000" class="input resize-y" placeholder="Bagikan pengumuman atau info penting…" aria-describedby="instagram-hint"></textarea>
+                    <p id="instagram-hint" class="mt-1 text-xs text-gray-500"><i class="fab fa-instagram mr-1"></i>Tempel link post Instagram (mis. dari @univ.udayana) untuk menampilkannya di sini.</p>
 
                     <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
                         <div class="flex flex-wrap items-center gap-3 text-sm">
@@ -98,8 +99,19 @@
                         </div>
                     </div>
 
-                    @if ($message->message_content)
-                        <p class="mt-3 whitespace-pre-wrap break-words leading-relaxed text-gray-800">{{ $message->message_content }}</p>
+                    @if ($text = $message->contentWithoutInstagramUrl())
+                        <p class="mt-3 whitespace-pre-wrap break-words leading-relaxed text-gray-800">{{ $text }}</p>
+                    @endif
+
+                    @if ($instagramUrl = $message->instagramUrl())
+                        {{-- Dirender oleh embed.js Instagram; isi blockquote jadi cadangan jika script gagal dimuat. --}}
+                        <div class="mt-3 max-w-[540px]">
+                            <blockquote class="instagram-media" data-instgrm-permalink="{{ $instagramUrl }}" data-instgrm-version="14" style="margin:0; width:100%;">
+                                <a href="{{ $instagramUrl }}" target="_blank" rel="noopener" class="flex items-center gap-2 rounded-xl border border-navy-100 p-3 text-sm font-medium text-navy-800 hover:bg-navy-50">
+                                    <i class="fab fa-instagram text-lg"></i> Lihat post di Instagram
+                                </a>
+                            </blockquote>
+                        </div>
                     @endif
 
                     @if ($message->hasAttachment())
@@ -307,3 +319,9 @@
     });
 </script>
 @endpush
+
+@if ($groupMessages->contains(fn ($message) => $message->instagramUrl()))
+@push('scripts')
+<script async src="https://www.instagram.com/embed.js"></script>
+@endpush
+@endif

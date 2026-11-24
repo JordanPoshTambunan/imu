@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
         // ✅ TAMBAHAN: Call ChatGroupSeeder
         $this->call([
             ChatGroupSeeder::class,
+            MenfessGroupSeeder::class, // setelah ChatGroupSeeder, yang membuat admin
         ]);
 
         // ℹ️ INFO: ChatGroupSeeder akan otomatis membuat admin user jika belum ada

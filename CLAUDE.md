@@ -75,6 +75,16 @@ Test (Pest, SQLite in-memory, `RefreshDatabase` aktif untuk `tests/Feature`;
 vendor/bin/pest
 ```
 
+Komunitas "Menfess Unud" (kiriman @unudfess) dibuat lewat seeder yang aman
+dijalankan berulang, termasuk di produksi:
+
+```bash
+php artisan db:seed --class=MenfessGroupSeeder
+```
+
+Post komunitas yang berisi link post/reel Instagram publik otomatis tampil
+sebagai embed (`GroupMessage::instagramUrl()` + `embed.js`), tanpa token Meta.
+
 Upload file butuh symlink storage:
 
 ```bash
