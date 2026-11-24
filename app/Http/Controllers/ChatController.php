@@ -39,12 +39,13 @@ class ChatController extends Controller
 
             if ($otherUserInMatch) {
                 // Ambil pesan terakhir untuk match ini
+                // Urut id, bukan created_at: dua pesan di detik yang sama punya created_at sama.
                 $lastMessage = Message::where('match_id', $match->id)
-                                    ->orderBy('created_at', 'desc')
+                                    ->latest('id')
                                     ->first();
 
-                $lastMessageText = $lastMessage 
-                    ? ($lastMessage->sender_id === $currentUser->id ? 'You: ' : '') . Str::limit($lastMessage->message_content, 30)
+                $lastMessageText = $lastMessage
+                    ? ($lastMessage->sender_id === $currentUser->id ? 'Kamu: ' : '') . Str::limit($lastMessage->message_content, 30)
                     : 'Mulai obrolan!';
 
                 $chatListUsers[] = (object)[
@@ -156,7 +157,7 @@ class ChatController extends Controller
                     'sender_id' => $message->sender_id,
                     'receiver_id' => $message->receiver_id,
                     'message_content' => $message->message_content,
-                    'timestamp' => $message->created_at->format('H:i A'),
+                    'timestamp' => $message->created_at->format('H:i'),
                     'sender_name' => $currentUser->full_name,
                 ]
             ], 200);
@@ -216,6 +217,12 @@ class ChatController extends Controller
 
         $messages = $query->orderBy('created_at', 'asc')->get();
 
+        // Endpoint ini di-poll saat percakapan terbuka, jadi pesan masuk dianggap sudah dibaca.
+        Message::where('match_id', $matchId)
+            ->where('receiver_id', $currentUser->id)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
         return response()->json([
             'status' => 'success',
             'messages' => $messages->map(function($message) use ($currentUser) {
@@ -224,7 +231,7 @@ class ChatController extends Controller
                     'sender_id' => $message->sender_id,
                     'receiver_id' => $message->receiver_id,
                     'message_content' => $message->message_content,
-                    'timestamp' => $message->created_at->format('H:i A'),
+                    'timestamp' => $message->created_at->format('H:i'),
                     'is_sender' => $message->sender_id === $currentUser->id,
                     'sender_name' => $message->sender->full_name,
                 ];

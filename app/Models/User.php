@@ -18,6 +18,16 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable, HasApiTokens;
 
+    /** Kategori match yang valid beserta labelnya untuk tampilan. */
+    public const MATCH_CATEGORIES = [
+        'friends' => 'Teman',
+        'jobs' => 'Kerja',
+        'committee' => 'Kepanitiaan',
+        'pkm' => 'PKM',
+        'kkn' => 'KKN',
+        'contest' => 'Lomba',
+    ];
+
     protected $fillable = [
         'full_name',
         'username',

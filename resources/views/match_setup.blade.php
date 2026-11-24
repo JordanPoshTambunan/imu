@@ -1,109 +1,79 @@
-@extends('layouts.app') {{-- Menggunakan layout dasar yang sudah kita buat --}}
+@extends('layouts.app')
+
+@section('title', 'Pilih Kategori')
 
 @section('content')
-{{-- Card utama untuk Set Up Matching --}}
-<div class="main-card w-full max-w-2xl p-8 text-center bg-blue-100 text-gray-800">
-    <h2 class="text-3xl font-bold mb-8 text-blue-700">What are you looking for?</h2>
+@php
+    $categories = [
+        'friends' => ['fa-user-group', 'Kenalan dan nongkrong'],
+        'jobs' => ['fa-briefcase', 'Lowongan dan magang'],
+        'committee' => ['fa-calendar-check', 'Panitia acara kampus'],
+        'pkm' => ['fa-lightbulb', 'Tim Program Kreativitas'],
+        'kkn' => ['fa-map-location-dot', 'Rekan Kuliah Kerja Nyata'],
+        'contest' => ['fa-trophy', 'Tim kompetisi'],
+    ];
+@endphp
 
-    {{-- START: Tambahkan tag form di sini --}}
-    <form method="POST" action="{{ route('profile.store_match_categories') }}"> {{-- Akan membuat rute ini --}}
-        @csrf {{-- Penting untuk keamanan Laravel --}}
-        <div class="grid grid-cols-2 gap-6" id="match-categories-container"> {{-- Tambahkan ID untuk JS --}}
-            @php
-                // Data kategori matching yang diambil dari SKPL Anda
-                $matchCategories = [
-                    'Friends' => 'fas fa-users',
-                    'Jobs' => 'fas fa-briefcase',
-                    'Committee' => 'fas fa-calendar-alt',
-                    'PKM' => 'fas fa-lightbulb',
-                    'KKN' => 'fas fa-map-marker-alt',
-                    'Contest' => 'fas fa-trophy',
-                ];
-            @endphp
+<div class="card w-full max-w-3xl p-6 sm:p-10">
+    @include('_onboarding_steps', ['step' => 2])
+    <h2 class="page-title">Apa yang kamu cari?</h2>
+    <p class="mt-1 text-sm text-gray-500">Pilih satu atau lebih. Kamu hanya dipertemukan dengan orang yang mencari hal serupa.</p>
 
-            @foreach ($matchCategories as $name => $iconClass)
-                <button type="button" class="btn-match-category" data-category="{{ strtolower($name) }}">
-                    <i class="{{ $iconClass }} text-2xl mb-2"></i>
-                    <span>{{ $name }}</span>
+    @if (session('success') || session('info'))
+        <div class="mt-6 rounded-xl border border-gold-500/50 bg-gold-100 px-4 py-3 text-sm text-navy-900" role="status">{{ session('success') ?? session('info') }}</div>
+    @endif
+
+    <form method="POST" action="{{ route('profile.store_match_categories') }}" class="mt-8">
+        @csrf
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3" id="match-categories-container">
+            @foreach ($categories as $key => [$icon, $hint])
+                @php($label = \App\Models\User::MATCH_CATEGORIES[$key])
+                <button type="button" data-category="{{ $key }}" aria-pressed="false"
+                        class="category group flex flex-col items-center gap-2 rounded-2xl border-2 border-navy-100 bg-white p-5 text-center transition hover:border-navy-700 hover:bg-navy-50">
+                    <span class="flex h-12 w-12 items-center justify-center rounded-xl bg-navy-50 text-xl text-navy-800 transition"><i class="fas {{ $icon }}"></i></span>
+                    <span class="font-semibold text-navy-900">{{ $label }}</span>
+                    <span class="text-xs text-gray-500">{{ $hint }}</span>
                 </button>
             @endforeach
         </div>
 
-        {{-- Hidden input for match categories --}}
-        <input type="hidden" name="match_categories" id="match-categories-hidden-input" value="{{ old('match_categories', Auth::user()->match_categories ? json_encode(Auth::user()->match_categories) : '[]') }}">
-        @error('match_categories') {{-- Menampilkan error untuk match_categories --}}
-            <p class="text-red-500 text-xs mt-3">{{ $message }}</p>
-        @enderror
+        <input type="hidden" name="match_categories" id="match-categories-hidden-input" value="{{ old('match_categories', json_encode(Auth::user()->match_categories ?? [])) }}">
+        @error('match_categories') <p class="field-error mt-3">{{ $message }}</p> @enderror
 
-        <div class="mt-8 text-center">
-            {{-- Tombol untuk melanjutkan --}}
-            <button type="submit" class="btn-primary w-full max-w-xs bg-blue-600 hover:bg-blue-700">Continue</button>
-        </div>
-    </form> {{-- END: Penutup form tag --}}
+        <button type="submit" id="match-submit" class="btn-primary mt-8 w-full">Mulai cari teman <i class="fas fa-arrow-right"></i></button>
+    </form>
 </div>
+@endsection
 
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const categoriesContainer = document.getElementById('match-categories-container');
-        const categoryButtons = categoriesContainer.querySelectorAll('button[data-category]');
-        const categoriesHiddenInput = document.getElementById('match-categories-hidden-input');
-        // Tidak ada batasan MAX_CATEGORIES di sini, pengguna bisa pilih banyak.
-        // Jika Anda ingin batasan (misal: maks 3), tambahkan seperti di profile_setup.
+        const buttons = document.querySelectorAll('#match-categories-container [data-category]');
+        const hiddenInput = document.getElementById('match-categories-hidden-input');
+        const submit = document.getElementById('match-submit');
 
-        let selectedCategories = [];
+        let selected = [];
+        try { selected = JSON.parse(hiddenInput.value) || []; } catch (e) { selected = []; }
 
-        // Inisialisasi: Tandai kategori yang sudah tersimpan di database atau dari old() input
-        let initialCategories = [];
-        try {
-            if (categoriesHiddenInput.value) {
-                const parsedValue = JSON.parse(categoriesHiddenInput.value);
-                if (Array.isArray(parsedValue)) {
-                    initialCategories = parsedValue;
-                }
-            }
-        } catch (e) {
-            console.error("Error parsing initial match categories:", e);
-        }
-
-        selectedCategories = initialCategories;
-
-        // Perbarui tampilan tombol berdasarkan selectedCategories saat ini
-        categoryButtons.forEach(button => {
-            if (selectedCategories.includes(button.dataset.category)) {
-                button.classList.add('selected');
-            }
-        });
-        updateButtonStates(); // Panggil untuk mengelola status disable/active
-
-        // Listener untuk klik tombol kategori
-        categoryButtons.forEach(button => {
-            button.addEventListener('click', function () {
-                const category = this.dataset.category;
-                const isSelected = this.classList.contains('selected');
-
-                if (isSelected) {
-                    // Hapus dari daftar jika sudah dipilih
-                    this.classList.remove('selected');
-                    selectedCategories = selectedCategories.filter(item => item !== category);
-                } else {
-                    // Tambahkan ke daftar jika belum dipilih
-                    // Jika ingin batasan, tambahkan if (selectedCategories.length < MAX_CATEGORIES) di sini
-                    this.classList.add('selected');
-                    selectedCategories.push(category);
-                }
-                // Update hidden input setiap kali kategori berubah
-                categoriesHiddenInput.value = JSON.stringify(selectedCategories);
-                updateButtonStates(); // Panggil untuk mengelola status disable/active
+        function render() {
+            buttons.forEach(button => {
+                const isSelected = selected.includes(button.dataset.category);
+                button.setAttribute('aria-pressed', isSelected);
+                button.classList.toggle('border-gold-500', isSelected);
+                button.classList.toggle('bg-gold-100', isSelected);
+                button.querySelector('span').classList.toggle('bg-gold-500', isSelected);
             });
-        });
-
-        // Fungsi untuk mengelola status disable tombol (jika ada batasan, atau untuk efek visual)
-        function updateButtonStates() {
-            // Jika ada batasan MAX_CATEGORIES, logikanya akan mirip dengan updateButtonStates di profile_setup.
-            // Untuk saat ini, karena tidak ada batasan, fungsi ini mungkin tidak mengubah disabled state,
-            // tetapi bisa digunakan untuk efek visual lain di masa depan.
+            hiddenInput.value = JSON.stringify(selected);
+            submit.disabled = selected.length === 0;
         }
+
+        buttons.forEach(button => button.addEventListener('click', function () {
+            const category = this.dataset.category;
+            selected = selected.includes(category) ? selected.filter(c => c !== category) : [...selected, category];
+            render();
+        }));
+
+        render();
     });
 </script>
 @endpush

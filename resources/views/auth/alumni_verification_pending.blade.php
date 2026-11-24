@@ -1,20 +1,16 @@
 @extends('layouts.app')
 
+@section('title', 'Menunggu Verifikasi')
+@section('main_class', 'auth-bg items-center justify-center')
+
 @section('content')
-<div class="main-card w-full max-w-xl p-10 flex flex-col items-center text-center">
-    <h2 class="text-3xl font-bold mb-4 text-white">Registrasi Berhasil!</h2>
-    <p class="text-lg mb-6 text-gray-300">
-        Akun alumni Anda berhasil didaftarkan.
+<div class="card w-full max-w-lg p-8 text-center sm:p-10">
+    <span class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gold-100 text-2xl text-navy-800"><i class="fas fa-hourglass-half"></i></span>
+    <h2 class="page-title mt-6">{{ session('error') ? 'Akun belum diverifikasi' : 'Pendaftaran berhasil!' }}</h2>
+    <p class="mt-3 text-gray-600">
+        Akun alumnimu sedang diperiksa administrator. Proses ini biasanya memakan waktu hingga 1×24 jam.
+        Kami akan mengabari lewat email setelah akunmu aktif.
     </p>
-    <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-6 py-4 rounded-lg relative w-full mb-8" role="alert">
-        <strong class="font-bold">Verifikasi Sedang Diproses!</strong>
-        <span class="block sm:inline">
-            Mohon tunggu. Akun Anda sedang dalam proses verifikasi oleh administrator. Proses ini dapat memakan waktu hingga 1x24 jam. Kami akan memberitahu Anda melalui email setelah akun Anda aktif.
-        </span>
-    </div>
-    <p class="text-md text-gray-400 mb-6">
-        Anda dapat mencoba login kembali nanti untuk memeriksa status verifikasi.
-    </p>
-    <a href="{{ route('login') }}" class="btn-primary w-full max-w-xs">Kembali ke Halaman Login</a>
+    <a href="{{ route('login') }}" class="btn-primary mt-8 w-full sm:w-auto">Kembali ke halaman masuk</a>
 </div>
 @endsection

@@ -1,105 +1,73 @@
 @extends('layouts.app')
 
+@section('title', 'Beranda')
+
 @section('content')
-{{-- Container utama untuk feed berita --}}
-{{-- Kelas 'main-content-area' dan style 'max-height' dihapus karena flexbox di app.blade.php yang akan mengaturnya --}}
-<div class="w-full max-w-2xl mx-auto flex flex-col h-full bg-gray-50 rounded-lg shadow-xl text-gray-800">
-    <div class="flex-grow overflow-y-auto p-4"> {{-- Area konten yang bisa di-scroll --}}
+@php
+    $stats = [
+        ['label' => 'Match', 'value' => $matchCount, 'icon' => 'fa-handshake', 'route' => 'chat.personal'],
+        ['label' => 'Pesan baru', 'value' => $unreadMessageCount, 'icon' => 'fa-envelope', 'route' => 'chat.personal'],
+        ['label' => 'Like baru', 'value' => $newLikeCount, 'icon' => 'fa-heart', 'route' => 'notifications.index'],
+    ];
+@endphp
 
-        {{-- Postingan Berita 1 --}}
-        <div class="post-card bg-white p-6 rounded-lg shadow-md mb-6">
-            <div class="flex items-center mb-4">
-                <div class="w-12 h-12 rounded-full bg-blue-200 mr-3 flex-shrink-0 overflow-hidden">
-                    <img src="https://via.placeholder.com/48/4299e1/ffffff?text=U" alt="Profile" class="w-full h-full object-cover"> {{-- Placeholder untuk icon univ.udayana --}}
-                </div>
-                <div>
-                    <p class="font-bold text-lg text-gray-900">univ.udayana</p>
-                    <p class="text-sm text-gray-500">25 Maret 2025 - 5 April 2025</p> {{-- Waktu upload/periode --}}
-                </div>
+<div class="w-full max-w-5xl space-y-6">
+    {{-- Sapaan --}}
+    <section class="relative overflow-hidden rounded-2xl bg-navy-900 p-6 text-white sm:p-8">
+        <div class="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-gold-500/20" aria-hidden="true"></div>
+        <div class="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <p class="text-sm text-white/70">Halo,</p>
+                <h1 class="text-2xl font-bold sm:text-3xl">{{ $user->full_name }}</h1>
+                <p class="mt-2 text-sm text-white/70">Kamu sedang mencari:
+                    @foreach ($user->match_categories ?? [] as $category)
+                        <span class="tag ml-1 bg-gold-500 text-navy-900">{{ \App\Models\User::MATCH_CATEGORIES[$category] ?? $category }}</span>
+                    @endforeach
+                    <a href="{{ route('match.setup') }}" class="ml-1 text-gold-400 underline-offset-4 hover:underline">ubah</a>
+                </p>
             </div>
-            <img src="{{ asset('images/post_bem.png') }}" alt="News Image" class="w-full rounded-lg mb-4"> {{-- Placeholder untuk gambar postingan --}}
-            <h4 class="font-semibold text-xl mb-2 text-gray-900">[PERPANJANGAN OPEN RECRUITMENT PANITIA INVENTION 2025]</h4>
-            <p class="text-gray-700 leading-relaxed">
-                Halo Civitas Informatika ✨<br><br>
-                Great news for you! Karena antusiasme yang luar biasa, recruitment panitia INVENTION 2025 diperpanjang selama 7 hari. Buat kamu yang belum sempat daftar, this is your second chance. Kami memberikan kesempatan bagi mahasiswa/i Informatika untuk mendaftar diri pada:
-                <br><br>
-                Link Pendaftaran: <a href="#" class="text-blue-600 hover:underline">bit.ly/DaftarInvention2025</a><br>
-                Deadline: 5 April 2025<br><br>
-                Jangan sampai ketinggalan kesempatan emas ini untuk menjadi bagian dari INVENTION 2025! Ayo daftar sekarang dan rasakan pengalaman tak terlupakan bersama kami!
-                <br><br>
-                Narahubung: [nama]
-                <br><br>
-                #BeritaUnud #Invention2025 #OpenRecruitment #Panitia #UniversitasUdayana
-            </p>
+            <a href="{{ route('find.people') }}" class="btn-accent self-start sm:self-auto"><i class="fas fa-magnifying-glass"></i> Cari teman</a>
+        </div>
+    </section>
+
+    {{-- Ringkasan --}}
+    <section class="grid grid-cols-3 gap-3 sm:gap-4" aria-label="Ringkasan">
+        @foreach ($stats as $stat)
+            <a href="{{ route($stat['route']) }}" class="card flex flex-col items-center gap-2 p-4 text-center transition hover:-translate-y-0.5 hover:shadow-xl sm:flex-row sm:gap-4 sm:p-5 sm:text-left">
+                <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-navy-50 text-navy-800 sm:h-12 sm:w-12 sm:text-lg"><i class="fas {{ $stat['icon'] }}"></i></span>
+                <span>
+                    <span class="block text-xl font-bold text-navy-900 sm:text-2xl">{{ $stat['value'] }}</span>
+                    <span class="text-xs text-gray-500 sm:text-sm">{{ $stat['label'] }}</span>
+                </span>
+            </a>
+        @endforeach
+    </section>
+
+    {{-- Postingan komunitas terbaru --}}
+    <section class="card p-6">
+        <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-lg font-bold text-navy-900">Kabar terbaru dari komunitas</h2>
+            <a href="{{ route('community') }}" class="text-sm font-semibold text-navy-700 hover:underline">Lihat semua</a>
         </div>
 
-        {{-- Postingan Berita 2 --}}
-        <div class="post-card bg-white p-6 rounded-lg shadow-md mb-6">
-            <div class="flex items-center mb-4">
-                <div class="w-12 h-12 rounded-full bg-red-200 mr-3 flex-shrink-0 overflow-hidden">
-                    <img src="https://via.placeholder.com/48/ef4444/ffffff?text=B" alt="Profile" class="w-full h-full object-cover"> {{-- Placeholder untuk icon bem.feb --}}
-                </div>
-                <div>
-                    <p class="font-bold text-lg text-gray-900">bem.feb</p>
-                    <p class="text-sm text-gray-500">20 Mei 2025</p> {{-- Contoh waktu upload --}}
-                </div>
-            </div>
-            <img src="{{ asset('images/post_pkm.png') }}" alt="News Image" class="w-full rounded-lg mb-4">
-            <h4 class="font-semibold text-xl mb-2 text-gray-900">OPEN RECRUITMENT TIM PKM 2025</h4>
-            <p class="text-gray-700 leading-relaxed">
-                Halo Civitas Akademika! 🚀<br><br>
-                BEM FEB Udayana membuka kesempatan emas bagi mahasiswa/i yang ingin mengembangkan ide kreatifnya dalam Program Kreativitas Mahasiswa (PKM) 2025. Bergabunglah dengan tim kami dan raih prestasi di tingkat nasional!
-                <br><br>
-                Bidang PKM: Riset, Kewirausahaan, Pengabdian Masyarakat, Karsa Cipta.<br>
-                Link Pendaftaran: <a href="#" class="text-blue-600 hover:underline">bit.ly/DaftarPKMBEMFEB2025</a><br>
-                Deadline: 27 Mei 2025<br><br>
-                Jangan lewatkan kesempatan untuk berinovasi dan berkarya. Ayo wujudkan ide-ide brilianmu bersama kami!
-                <br><br>
-                #PKM2025 #BEMFEB #InovasiMahasiswa #UdayanaBerprestasi
-            </p>
+        <div class="divide-y divide-gray-100">
+            @forelse ($latestPosts as $post)
+                <a href="{{ route('community', ['group' => $post->group_id]) }}" class="flex gap-3 py-4 first:pt-0 last:pb-0 hover:opacity-90">
+                    <x-avatar :user="$post->sender" />
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm">
+                            <span class="font-semibold text-navy-900">{{ $post->sender->full_name }}</span>
+                            <span class="text-gray-500">di</span>
+                            <span class="font-medium text-navy-700">{{ $post->group->name }}</span>
+                            <span class="text-gray-400">· {{ $post->created_at->diffForHumans() }}</span>
+                        </p>
+                        <p class="mt-1 line-clamp-2 whitespace-pre-line text-sm text-gray-700">{{ $post->message_content }}</p>
+                    </div>
+                </a>
+            @empty
+                <p class="py-6 text-center text-sm text-gray-500">Belum ada postingan di komunitas.</p>
+            @endforelse
         </div>
-
-        {{-- Tambahkan lebih banyak postingan dummy agar scrollable --}}
-        <div class="post-card bg-white p-6 rounded-lg shadow-md mb-6">
-            <div class="flex items-center mb-4">
-                <div class="w-12 h-12 rounded-full bg-purple-200 mr-3 flex-shrink-0 overflow-hidden">
-                    <img src="https://via.placeholder.com/48/805ad5/ffffff?text=F" alt="Profile" class="w-full h-full object-cover">
-                </div>
-                <div>
-                    <p class="font-bold text-lg text-gray-900">fakultas.teknik</p>
-                    <p class="text-sm text-gray-500">10 Juni 2025</p>
-                </div>
-            </div>
-            <img src="https://via.placeholder.com/600x300/a78bfa/ffffff?text=Seminar+Teknologi" alt="News Image" class="w-full rounded-lg mb-4">
-            <h4 class="font-semibold text-xl mb-2 text-gray-900">SEMINAR NASIONAL TEKNOLOGI TERBARU</h4>
-            <p class="text-gray-700 leading-relaxed">
-                Fakultas Teknik Universitas Udayana dengan bangga mempersembahkan Seminar Nasional Teknologi Terbaru. Dapatkan wawasan mendalam dari para pakar industri dan akademisi.
-                <br><br>
-                Tanggal: 20 Juli 2025<br>
-                Tempat: Auditorium Fakultas Teknik<br>
-                Pendaftaran: <a href="#" class="text-blue-600 hover:underline">bit.ly/SeminarTeknikUnud2025</a>
-            </p>
-        </div>
-        <div class="post-card bg-white p-6 rounded-lg shadow-md mb-6">
-            <div class="flex items-center mb-4">
-                <div class="w-12 h-12 rounded-full bg-blue-200 mr-3 flex-shrink-0 overflow-hidden">
-                    <img src="https://via.placeholder.com/48/4299e1/ffffff?text=U" alt="Profile" class="w-full h-full object-cover">
-                </div>
-                <div>
-                    <p class="font-bold text-lg text-gray-900">univ.udayana</p>
-                    <p class="text-sm text-gray-500">5 Juni 2025</p>
-                </div>
-            </div>
-            <img src="https://via.placeholder.com/600x300/60a5fa/ffffff?text=Beasiswa" alt="News Image" class="w-full rounded-lg mb-4">
-            <h4 class="font-semibold text-xl mb-2 text-gray-900">INFORMASI BEASISWA UNUD 2025/2026</h4>
-            <p class="text-gray-700 leading-relaxed">
-                Kesempatan beasiswa penuh dan parsial bagi mahasiswa/i berprestasi Universitas Udayana. Jangan lewatkan kesempatan ini!
-                <br><br>
-                Detail dan Persyaratan: <a href="#" class="text-blue-600 hover:underline">bit.ly/BeasiswaUnud2025</a><br>
-                Deadline Pendaftaran: 30 Juni 2025
-            </p>
-        </div>
-
-    </div> {{-- End of flex-grow overflow-y-auto --}}
-</div> {{-- End of main content container --}}
+    </section>
+</div>
 @endsection

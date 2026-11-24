@@ -1,7 +1,11 @@
 <?php
 
-it('returns a successful response', function () {
-    $response = $this->get('/');
+use App\Models\User;
 
-    $response->assertStatus(200);
+it('mengarahkan tamu dari / ke halaman masuk', function () {
+    $this->get('/')->assertRedirect(route('login'));
+});
+
+it('mengarahkan pengguna yang login dari / ke beranda', function () {
+    $this->actingAs(User::factory()->create())->get('/')->assertRedirect(route('home'));
 });

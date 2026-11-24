@@ -107,7 +107,7 @@ class ProfileController extends Controller
         }
 
         // Validasi kategori yang diizinkan (optional security check)
-        $allowedCategories = ['friends', 'jobs', 'committee', 'pkm', 'kkn', 'contest'];
+        $allowedCategories = array_keys(\App\Models\User::MATCH_CATEGORIES);
         $invalidCategories = array_diff($matchCategoriesArray, $allowedCategories);
         
         if (!empty($invalidCategories)) {
