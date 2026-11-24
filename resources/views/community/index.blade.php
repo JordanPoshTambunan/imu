@@ -120,7 +120,7 @@
                     @endif
 
                     <div class="mt-4 flex items-center gap-2 border-t border-gray-100 pt-3 text-sm">
-                        <button type="button" class="like-button inline-flex items-center gap-2 rounded-lg px-3 py-1.5 font-medium transition hover:bg-navy-50 {{ $liked ? 'text-gold-500' : 'text-gray-500' }}" aria-pressed="{{ $liked ? 'true' : 'false' }}">
+                        <button type="button" class="like-button inline-flex items-center gap-2 rounded-lg px-3 py-1.5 font-medium transition hover:bg-navy-50 {{ $liked ? 'bg-gold-100 text-navy-900' : 'text-gray-500' }}" aria-pressed="{{ $liked ? 'true' : 'false' }}">
                             <i class="fas fa-heart"></i> <span class="like-count">{{ $message->reactions->count() }}</span><span class="sr-only"> suka</span>
                         </button>
                         <button type="button" class="comment-toggle inline-flex items-center gap-2 rounded-lg px-3 py-1.5 font-medium text-gray-500 transition hover:bg-navy-50" aria-expanded="false">
@@ -228,7 +228,8 @@
                 if (!response.ok) throw new Error(data.message);
                 const liked = data.user_reaction !== null;
                 this.setAttribute('aria-pressed', liked);
-                this.classList.toggle('text-gold-500', liked);
+                this.classList.toggle('bg-gold-100', liked);
+                this.classList.toggle('text-navy-900', liked);
                 this.classList.toggle('text-gray-500', !liked);
                 this.querySelector('.like-count').textContent = Object.values(data.reaction_counts).reduce((a, b) => a + Number(b), 0);
             } catch (error) {

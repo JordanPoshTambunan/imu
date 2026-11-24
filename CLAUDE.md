@@ -157,8 +157,8 @@ disk privat `local`, bukan `public`; `verification_doc_path` relatif terhadap di
 ### Tampilan
 
 - **Warna** hanya dari token di `layouts/app.blade.php` (`tailwind.config`):
-  `navy-900 #00296b`, `navy-800 #003f88`, `navy-700 #00509d`, `gold-500 #fdc500`,
-  `gold-400 #ffd500`, plus tint `navy-50/100` dan `gold-100`. Jangan pakai
+  `navy-900 #00296b`, `navy-800 #003f88`, `navy-700 #00509d`, `gold-500 #f0bd38`,
+  `gold-400 #f6cd5c`, plus tint `navy-50/100` dan `gold-100`. Jangan pakai
   `blue-*`/`orange-*` bawaan Tailwind. Teks di atas `gold-*` selalu `text-navy-900`.
 - **Kelas dasar** juga di layout: `card`, `input`, `btn-primary`, `btn-accent`,
   `btn-ghost`, `chip`, `tag`, `page-title`. Pakai ini sebelum menulis kelas baru.
