@@ -68,13 +68,6 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
 
-        // Debugging: log input yang diterima
-        \Log::info('storeMatchCategories called', [
-            'user_id' => $user->id,
-            'input_match_categories' => $request->input('match_categories'),
-            'all_input' => $request->all()
-        ]);
-
         // Validasi kategori match
         $request->validate([
             'match_categories' => ['required', 'string', 'min:1'], // Ubah dari 'json' ke 'string' untuk debugging yang lebih baik
@@ -128,30 +121,12 @@ class ProfileController extends Controller
             ])->withInput();
         }
 
-        // Debug: log sebelum save
-        \Log::info('About to save match categories', [
-            'user_id' => $user->id,
-            'old_match_categories' => $user->match_categories,
-            'new_match_categories' => $matchCategoriesArray
-        ]);
-
         try {
-            // Simpan match_categories
             $user->match_categories = $matchCategoriesArray;
-            $saved = $user->save();
-            
-            // Debug: log setelah save
-            \Log::info('Match categories saved', [
-                'user_id' => $user->id,
-                'save_result' => $saved,
-                'saved_match_categories' => $user->fresh()->match_categories,
-                'raw_check' => $user->fresh()->getRawMatchCategories()
-            ]);
-            
-            if (!$saved) {
+
+            if (! $user->save()) {
                 throw new \Exception('Failed to save user data');
             }
-            
         } catch (\Exception $e) {
             \Log::error('Error saving match categories', [
                 'user_id' => $user->id,

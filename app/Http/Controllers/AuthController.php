@@ -7,9 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use App\Models\UserInteraction;
-use Illuminate\Support\Facades\DB; // Ditambahkan: Untuk debugging SQL, meskipun tidak digunakan dalam final query
 
 class AuthController extends Controller
 {
@@ -78,17 +76,10 @@ class AuthController extends Controller
         $request->validate([
             'full_name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'max:255', 'unique:users'],
-            'email' => [
-                'required_without:verification_doc',
-                'nullable',
-                'string',
-                'email',
-                'max:255',
-                'unique:users'
-            ],
+            // Email wajib: kolom users.email NOT NULL dan login memakai email.
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'verification_doc' => [
-                'required_without:email',
                 'nullable',
                 'file',
                 'mimes:jpg,jpeg,png,pdf',
@@ -98,24 +89,23 @@ class AuthController extends Controller
             'full_name.required' => 'Nama lengkap wajib diisi.',
             'username.required' => 'Username wajib diisi.',
             'username.unique' => 'Username ini sudah digunakan. Silakan pilih yang lain.',
-            'email.required_without' => 'Email atau dokumen verifikasi wajib diisi.',
+            'email.required' => 'Email wajib diisi.',
             'email.email' => 'Format email tidak valid.',
             'email.unique' => 'Email ini sudah terdaftar. Silakan login atau gunakan email lain.',
             'password.required' => 'Password wajib diisi.',
             'password.min' => 'Password minimal harus 8 karakter.',
             'password.confirmed' => 'Konfirmasi password tidak cocok.',
-            'verification_doc.required_without' => 'Dokumen verifikasi atau email wajib diisi.',
             'verification_doc.file' => 'Dokumen verifikasi harus berupa file.',
             'verification_doc.mimes' => 'Format dokumen harus JPG, JPEG, PNG, atau PDF.',
             'verification_doc.max' => 'Ukuran dokumen maksimal 3 MB.',
         ]);
 
-        // 2. Upload Dokumen Verifikasi (jika ada)
-        $filePath = null;
-        if ($request->hasFile('verification_doc')) {
-            $filePath = $request->file('verification_doc')->store('public/alumni_verification');
-            $filePath = str_replace('public/', 'storage/', $filePath);
-        }
+        // 2. Upload Dokumen Verifikasi (jika ada).
+        // Disimpan di disk privat 'local' karena berisi data identitas — tidak boleh punya URL publik.
+        // Path yang dicatat relatif terhadap disk itu: Storage::disk('local')->path($filePath).
+        $filePath = $request->hasFile('verification_doc')
+            ? $request->file('verification_doc')->store('alumni_verification', 'local')
+            : null;
 
         // 3. Buat User Baru di Database
         $user = User::create([
@@ -175,7 +165,8 @@ class AuthController extends Controller
 
             // 5. Cek kelengkapan profil dasar
             $isBasicProfileComplete = true;
-            $requiredProfileFields = ['prodi', 'fakultas', 'gender', 'description'];
+            // Samakan dengan CheckProfileCompletion: 'description' boleh kosong.
+            $requiredProfileFields = ['prodi', 'fakultas', 'gender'];
 
             foreach ($requiredProfileFields as $field) {
                 if (empty($user->$field)) {
@@ -242,90 +233,32 @@ class AuthController extends Controller
     }
 
     /**
-     * Menampilkan halaman finding people - FIXED VERSION (DESCRIPTION FILTER REMOVED).
+     * Menampilkan halaman finding people: 5 kandidat acak yang punya
+     * setidaknya satu kategori match yang sama dan belum pernah di-swipe.
      */
     public function showFindingPeoplePage()
     {
-        $currentUserId = Auth::id();
         $currentUser = Auth::user();
+        $categories = $currentUser->match_categories;
 
-        // Debugging: uncomment untuk debug
-        // dd([
-        //     'currentUser' => $currentUser ? $currentUser->toArray() : null,
-        //     'currentUserMatchCategories' => $currentUser->match_categories,
-        //     'is_array' => is_array($currentUser->match_categories),
-        // ]);
-
-        $interactedUserIds = UserInteraction::where('user_id', $currentUserId)
-                                            ->pluck('target_user_id')
-                                            ->toArray();
-
-        $currentUserMatchCategories = $currentUser->match_categories; 
-
-        // Base query untuk users yang akan ditampilkan
-        $usersToDisplayQuery = User::where('id', '!=', $currentUserId)
-                                ->where('is_verified', true)
-                                ->whereNotNull('prodi')
-                                ->whereNotNull('fakultas')
-                                ->whereNotNull('gender')
-                                // FILTER DESCRIPTION DIHAPUS DI SINI!
-                                // ->whereNotNull('description')
-                                ->whereNotNull('interests')
-                                ->whereNotNull('match_categories')
-                                ->whereNotIn('id', $interactedUserIds);
-
-        // FILTER BERDASARKAN KATEGORI MATCH - METODE YANG LEBIH ROBUST
-        if (is_array($currentUserMatchCategories) && count($currentUserMatchCategories) > 0) {
-            
-            // Method 1: Coba gunakan whereJsonContains jika database mendukung (MySQL 5.7+, PostgreSQL)
-            if ($this->supportsJsonContains()) {
-                $usersToDisplayQuery->where(function ($query) use ($currentUserMatchCategories) {
-                    foreach ($currentUserMatchCategories as $category) {
-                        $query->orWhereJsonContains('match_categories', $category);
-                    }
-                });
-            } else {
-                // Method 2: Fallback untuk SQLite atau database lain
-                // Ambil semua kandidat user dan filter menggunakan PHP
-                $candidateUsers = $usersToDisplayQuery->get();
-                
-                $matchedUsers = $candidateUsers->filter(function ($user) use ($currentUserMatchCategories) {
-                    if (!is_array($user->match_categories)) {
-                        return false;
-                    }
-                    // Cek apakah ada intersection antara kategori user saat ini dengan kandidat user
-                    return !empty(array_intersect($currentUserMatchCategories, $user->match_categories));
-                });
-                
-                // Convert kembali ke Collection dan ambil 5 random
-                $usersToDisplay = $matchedUsers->shuffle()->take(5);
-                
-                return view('finding_people', compact('usersToDisplay'));
-            }
-        } else {
-            // Jika user yang login tidak punya kategori match, tampilkan pesan atau redirect
-            $usersToDisplay = collect(); // Empty collection
-            return view('finding_people', compact('usersToDisplay'));
+        if (! is_array($categories) || count($categories) === 0) {
+            return view('finding_people', ['usersToDisplay' => collect()]);
         }
 
-        $usersToDisplay = $usersToDisplayQuery->inRandomOrder()->limit(5)->get();
+        // whereJsonContains didukung SQLite (Laravel 12), MySQL, dan PostgreSQL.
+        $usersToDisplay = User::discoverable()
+            ->where('id', '!=', $currentUser->id)
+            ->whereNotIn('id', UserInteraction::where('user_id', $currentUser->id)->select('target_user_id'))
+            ->where(function ($query) use ($categories) {
+                foreach ($categories as $category) {
+                    $query->orWhereJsonContains('match_categories', $category);
+                }
+            })
+            ->inRandomOrder()
+            ->limit(5)
+            ->get();
 
         return view('finding_people', compact('usersToDisplay'));
-    }
-
-    /**
-     * Cek apakah database mendukung JSON contains operation
-     */
-    private function supportsJsonContains(): bool
-    {
-        try {
-            // Test simple whereJsonContains query
-            User::whereJsonContains('match_categories', 'test')->limit(1)->get();
-            return true;
-        } catch (\Exception $e) {
-            \Log::info('Database does not support whereJsonContains, using fallback method');
-            return false;
-        }
     }
 
     /**

@@ -7,59 +7,68 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * Memaksa pengguna menyelesaikan onboarding sebelum mengakses aplikasi.
+ *
+ * Alur: profil dasar -> kategori match -> aplikasi.
+ *
+ * Didaftarkan sebagai alias 'profile_complete' di bootstrap/app.php.
+ */
 class CheckProfileCompletion
 {
     /**
-     * Handle an incoming request.
+     * Field profil yang wajib diisi.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * PENTING: 'description' sengaja TIDAK ada di daftar ini. ProfileController
+     * memvalidasinya sebagai 'nullable', jadi mewajibkannya di sini akan membuat
+     * pengguna yang mengosongkan deskripsi terjebak dalam loop redirect.
      */
+    private const REQUIRED_PROFILE_FIELDS = ['prodi', 'fakultas', 'gender'];
+
     public function handle(Request $request, Closure $next): Response
     {
-        // Pastikan user sudah login
-        if (Auth::check()) {
-            $user = Auth::user();
+        if (! Auth::check()) {
+            return $next($request);
+        }
 
-            // 1. Cek Kelengkapan Profil Dasar
-            $isBasicProfileComplete = true;
-            $requiredProfileFields = ['prodi', 'fakultas', 'gender', 'description'];
+        $user = Auth::user();
 
-            foreach ($requiredProfileFields as $field) {
-                if (empty($user->$field)) {
-                    $isBasicProfileComplete = false;
-                    break;
-                }
-            }
-            if (empty($user->interests) || !is_array($user->interests) || count($user->interests) === 0) {
-                $isBasicProfileComplete = false;
-            }
+        // Tahap 1: profil dasar
+        if (! $this->hasCompleteBasicProfile($user) && ! $request->routeIs('profile.setup')) {
+            session()->put('url.intended', $request->url());
 
-            // 2. Cek Kelengkapan Kategori Match
-            $isMatchCategoriesComplete = true;
-            if (empty($user->match_categories) || !is_array($user->match_categories) || count($user->match_categories) === 0) {
-                $isMatchCategoriesComplete = false;
-            }
+            return redirect()
+                ->route('profile.setup')
+                ->with('info', 'Mohon lengkapi profil Anda untuk dapat mengakses fitur lainnya.');
+        }
 
-            // --- Logika Redirect Paksa ---
+        // Tahap 2: kategori match
+        if ($this->hasCompleteBasicProfile($user)
+            && ! $this->hasMatchCategories($user)
+            && ! $request->routeIs('match.setup')) {
+            session()->put('url.intended', $request->url());
 
-            // Jika profil dasar belum lengkap DAN user tidak sedang di halaman profile.setup
-            if (!$isBasicProfileComplete && !$request->routeIs('profile.setup')) {
-                // Simpan URL yang ingin dituju user setelah melengkapi profil
-                session()->put('url.intended', $request->url());
-                return redirect()->route('profile.setup')->with('info', 'Mohon lengkapi profil Anda untuk dapat mengakses fitur lainnya.');
-            }
+            return redirect()
+                ->route('match.setup')
+                ->with('info', 'Mohon pilih kategori yang Anda cari untuk dapat mengakses fitur lainnya.');
+        }
 
-            // Jika profil dasar sudah lengkap TETAPI kategori match belum lengkap
-            // DAN user tidak sedang di halaman match.setup
-            if ($isBasicProfileComplete && !$isMatchCategoriesComplete && !$request->routeIs('match.setup')) {
-                // Simpan URL yang ingin dituju user setelah melengkapi kategori match
-                session()->put('url.intended', $request->url());
-                return redirect()->route('match.setup')->with('info', 'Mohon pilih kategori yang Anda cari untuk dapat mengakses fitur lainnya.');
+        return $next($request);
+    }
+
+    private function hasCompleteBasicProfile($user): bool
+    {
+        foreach (self::REQUIRED_PROFILE_FIELDS as $field) {
+            if (empty($user->$field)) {
+                return false;
             }
         }
 
-        // Lanjutkan request jika user belum login atau semua profil sudah lengkap,
-        // atau user sedang di halaman setup yang benar untuk melengkapi profil/kategori.
-        return $next($request);
+        return ! empty($user->interests) && is_array($user->interests);
+    }
+
+    private function hasMatchCategories($user): bool
+    {
+        return ! empty($user->match_categories) && is_array($user->match_categories);
     }
 }
