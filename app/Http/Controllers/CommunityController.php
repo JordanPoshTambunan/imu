@@ -15,6 +15,15 @@ use App\Models\PostComment; // ✅ NEW: Untuk comments
 
 class CommunityController extends Controller
 {
+    private const ALLOWED_ATTACHMENT_MIMES = [
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        'application/pdf', 'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/plain',
+    ];
+
     /**
      * Menampilkan halaman community chat dengan data dinamis.
      * ✅ ENHANCED: Better error handling, logging, dan performance optimization
@@ -112,8 +121,9 @@ class CommunityController extends Controller
             $validatedData = $request->validate([
                 'group_id' => ['required', 'integer', 'exists:chat_groups,id'],
                 'message_content' => ['required_without:attachment', 'nullable', 'string', 'min:1', 'max:5000'], // ✅ NEW: Optional if has attachment
-                'attachment' => ['nullable', 'file', 'max:10240'], // ✅ NEW: File upload support (10MB max)
+                'attachment' => ['nullable', 'file', 'max:10240', 'mimetypes:' . implode(',', self::ALLOWED_ATTACHMENT_MIMES)],
             ], [
+                'attachment.mimetypes' => 'Tipe file tidak didukung. Gunakan gambar, PDF, Word, Excel, atau teks.',
                 'group_id.required' => 'Grup komunitas tidak valid.',
                 'group_id.exists' => 'Grup komunitas tidak ditemukan.',
                 'message_content.required_without' => 'Pesan atau file attachment wajib diisi.', // ✅ NEW: Updated message
@@ -256,12 +266,21 @@ class CommunityController extends Controller
      */
     public function addReaction(Request $request)
     {
-        try {
-            $validatedData = $request->validate([
-                'message_id' => ['required', 'integer', 'exists:group_messages,id'],
-                'reaction_type' => ['required', 'string', 'in:like,heart,thumbs_up,celebrate'],
-            ]);
+        $validatedData = $request->validate([
+            'message_id' => ['required', 'integer', 'exists:group_messages,id'],
+            'reaction_type' => ['required', 'string', 'in:like,heart,thumbs_up,celebrate'],
+        ], [
+            'message_id.required' => 'Pesan tidak valid.',
+            'message_id.exists' => 'Pesan tidak ditemukan.',
+            'reaction_type.required' => 'Jenis reaksi wajib diisi.',
+            'reaction_type.in' => 'Jenis reaksi tidak valid.',
+        ]);
 
+        if (! $this->findAccessibleMessage($validatedData['message_id'])) {
+            return $this->messageNotAccessibleResponse();
+        }
+
+        try {
             $currentUser = Auth::user();
             $messageId = $validatedData['message_id'];
             $reactionType = $validatedData['reaction_type'];
@@ -322,13 +341,32 @@ class CommunityController extends Controller
      */
     public function addComment(Request $request)
     {
-        try {
-            $validatedData = $request->validate([
-                'message_id' => ['required', 'integer', 'exists:group_messages,id'],
-                'comment_content' => ['required', 'string', 'min:1', 'max:1000'],
-                'parent_id' => ['nullable', 'integer', 'exists:post_comments,id'],
-            ]);
+        $validatedData = $request->validate([
+            'message_id' => ['required', 'integer', 'exists:group_messages,id'],
+            'comment_content' => ['required', 'string', 'min:1', 'max:1000'],
+            'parent_id' => ['nullable', 'integer', 'exists:post_comments,id'],
+        ], [
+            'message_id.required' => 'Pesan tidak valid.',
+            'message_id.exists' => 'Pesan tidak ditemukan.',
+            'comment_content.required' => 'Komentar tidak boleh kosong.',
+            'comment_content.max' => 'Komentar terlalu panjang (maksimal 1000 karakter).',
+            'parent_id.exists' => 'Komentar yang dibalas tidak ditemukan.',
+        ]);
 
+        if (! $this->findAccessibleMessage($validatedData['message_id'])) {
+            return $this->messageNotAccessibleResponse();
+        }
+
+        // Balasan harus menempel pada komentar di pesan yang sama.
+        if (! empty($validatedData['parent_id'])
+            && ! PostComment::where('id', $validatedData['parent_id'])->where('message_id', $validatedData['message_id'])->exists()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Komentar yang dibalas tidak berada di pesan ini.',
+            ], 422);
+        }
+
+        try {
             $currentUser = Auth::user();
             $messageId = $validatedData['message_id'];
             $commentContent = trim($validatedData['comment_content']);
@@ -390,12 +428,20 @@ class CommunityController extends Controller
      */
     public function loadComments(Request $request)
     {
-        try {
-            $request->validate([
-                'message_id' => ['required', 'integer', 'exists:group_messages,id'],
-                'offset' => ['nullable', 'integer', 'min:0'],
-            ]);
+        $request->validate([
+            'message_id' => ['required', 'integer', 'exists:group_messages,id'],
+            'offset' => ['nullable', 'integer', 'min:0'],
+        ], [
+            'message_id.required' => 'Pesan tidak valid.',
+            'message_id.exists' => 'Pesan tidak ditemukan.',
+            'offset.integer' => 'Offset tidak valid.',
+        ]);
 
+        if (! $this->findAccessibleMessage($request->message_id)) {
+            return $this->messageNotAccessibleResponse();
+        }
+
+        try {
             $messageId = $request->message_id;
             $offset = $request->offset ?? 0;
 
@@ -460,6 +506,25 @@ class CommunityController extends Controller
     }
 
     /**
+     * Pesan hanya boleh diakses jika grupnya sudah disetujui.
+     * `exists:` di validasi hanya membuktikan barisnya ada, bukan hak aksesnya.
+     */
+    private function findAccessibleMessage($messageId): ?GroupMessage
+    {
+        return GroupMessage::where('id', $messageId)
+            ->whereHas('group', fn ($query) => $query->where('is_approved', true))
+            ->first();
+    }
+
+    private function messageNotAccessibleResponse()
+    {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Pesan tidak ditemukan atau grupnya tidak dapat diakses.',
+        ], 404);
+    }
+
+    /**
      * ✅ ENHANCED: Check if user has permission to post in the group dengan moderator support
      */
     private function checkPostPermission($user, $group)
@@ -492,23 +557,11 @@ class CommunityController extends Controller
         }
 
         try {
-            // Security checks
-            $allowedMimes = [
-                'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-                'application/pdf', 'application/msword', 
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'application/vnd.ms-excel',
-                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'text/plain'
-            ];
-
-            if (!in_array($file->getMimeType(), $allowedMimes)) {
-                throw new \Exception('File type not allowed');
-            }
-
-            // Generate unique filename
+            // Tipe file sudah divalidasi lewat aturan 'mimetypes' di sendGroupMessage.
             $originalName = $file->getClientOriginalName();
-            $extension = $file->getClientOriginalExtension();
+            // Ekstensi diturunkan dari isi file, bukan dari nama kiriman pengguna:
+            // "shell.php" berisi header GIF tidak boleh tersimpan sebagai .php di folder publik.
+            $extension = $file->guessExtension() ?? 'bin';
             $filename = time() . '_' . uniqid() . '.' . $extension;
 
             // Store file
@@ -555,16 +608,9 @@ class CommunityController extends Controller
      */
     private function filterContent($content)
     {
-        // Remove excessive whitespace
-        $content = preg_replace('/\s+/', ' ', trim($content));
-        
-        // Remove null bytes
-        $content = str_replace("\0", '', $content);
-        
-        // Basic HTML entity encoding untuk safety
-        $content = htmlspecialchars($content, ENT_QUOTES, 'UTF-8', false);
-        
-        return $content;
+        // Jangan escape HTML di sini: Blade {{ }} dan escapeHtml() di JS sudah
+        // meng-escape saat render. Baris baru dipertahankan untuk whitespace-pre-wrap.
+        return str_replace("\0", '', trim($content));
     }
 
     /**

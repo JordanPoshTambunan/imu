@@ -66,6 +66,15 @@ npm run dev          # terminal terpisah
 php artisan serve
 ```
 
+Ekstensi PHP `pdo_sqlite` harus aktif (di Laragon: Menu → PHP → Extensions).
+
+Test (Pest, SQLite in-memory, `RefreshDatabase` aktif untuk `tests/Feature`;
+`UserFactory` default = mahasiswa yang sudah selesai onboarding):
+
+```bash
+vendor/bin/pest
+```
+
 Upload file butuh symlink storage:
 
 ```bash
@@ -125,15 +134,25 @@ Keduanya di-cast `array` di model. **Jangan menambahkan accessor atau mutator
 yang melakukan `json_encode` lagi** — itu pernah menyebabkan double-encoding dan
 butuh waktu lama untuk ditelusuri. Cast saja sudah cukup.
 
-### SQLite tidak mendukung `whereJsonContains`
+### `whereJsonContains` jalan di SQLite
 
-Inilah batasan terbesar project ini saat ini. `AuthController::showFindingPeoplePage`
-punya jalur fallback yang **menarik seluruh kandidat pengguna ke memori PHP** lalu
-memfilter dengan `array_intersect`. Jalan untuk 50 pengguna, mati untuk 5.000.
+Laravel 12 mendukung `whereJsonContains` di SQLite, MySQL, dan PostgreSQL. Jangan
+membuat jalur fallback yang menarik semua pengguna ke memori PHP — dulu pernah ada
+dan sudah dihapus. Filter JSON tetap full scan (tidak terindeks); kalau suatu saat
+pengguna mencapai puluhan ribu, normalisasi `match_categories` menjadi tabel pivot
+`user_match_categories`.
 
-Kalau menyentuh fitur matching, pertimbangkan memperbaiki akarnya: normalisasi
-`match_categories` menjadi tabel pivot `user_match_categories`, sehingga filter
-menjadi satu `JOIN` terindeks. Ini pekerjaan yang sudah direncanakan.
+### Data pengguna di JavaScript wajib di-escape
+
+Blade `{{ }}` aman, tetapi template string JS yang masuk ke `innerHTML` tidak.
+Setiap nilai dari server (nama, judul notifikasi, isi pesan) harus lewat
+`escapeHtml()`. Dropdown notifikasi pernah menjadi celah XSS lewat `full_name`.
+
+### Upload file
+
+Ekstensi file yang disimpan diturunkan dari isi file (`guessExtension()`), bukan
+`getClientOriginalExtension()`. Dokumen identitas (verifikasi alumni) disimpan di
+disk privat `local`, bukan `public`; `verification_doc_path` relatif terhadap disk itu.
 
 ### Jangan escape HTML saat menyimpan
 
@@ -191,24 +210,29 @@ Diurutkan dari yang paling memblokir.
    ada halaman admin, Artisan command, atau endpoint mana pun untuk menyetujui
    mereka. Secara praktis seluruh peran `alumni` tidak bisa login selamanya.
 
-2. **Tidak ada rate limiting.** Login bisa di-brute force tanpa batas.
-
-3. **Otorisasi di endpoint community.** `addReaction`, `addComment`, dan
-   `loadComments` tidak memeriksa apakah pesan berada di grup yang disetujui.
-
-4. **Verifikasi email belum ada.** Mahasiswa otomatis `is_verified = true` hanya
+2. **Verifikasi email belum ada.** Mahasiswa otomatis `is_verified = true` hanya
    berdasarkan regex domain email. `MustVerifyEmail` sudah di-import di model
    `User` tapi tidak pernah diimplementasikan. Reset password juga belum ada
    meski tabelnya sudah dibuat.
 
-5. **Performa matching** — lihat §5.
+3. **Logika bisnis menumpuk di controller.** `CommunityController` ~700 baris.
+   Belum ada service layer. `NotificationController::likeBack` masih memanggil
+   `ProfileController` secara manual (melanggar §5).
 
-6. **Logika bisnis menumpuk di controller.** `CommunityController` 691 baris.
-   Belum ada service layer.
+4. **Spam notifikasi.** Like → dislike → like membuat notifikasi `like_received`
+   baru setiap kali; match notification dibuat ulang setiap like setelah match.
 
-7. **Belum ada test.** Hanya dua stub bawaan Laravel.
+5. **Logout lewat GET.** Seharusnya POST agar tidak bisa dipicu dari link luar.
 
-8. **Chat belum real-time.** Masih polling lewat `/chat/messages`;
+6. **Test masih sedikit.** Ada test fitur untuk community, registrasi alumni,
+   login, finding people, dan halaman notifikasi (`tests/Feature`). Chat dan
+   like/match belum diuji.
+
+7. **Chat belum real-time.** Masih polling lewat `/chat/messages`;
    `BROADCAST_CONNECTION=log`.
 
-9. **`deleteAttachment` belum dibuat.** Route-nya sudah dihapus sampai methodnya ada.
+8. **`deleteAttachment` belum dibuat.** Route-nya sudah dihapus sampai methodnya ada.
+
+9. **Format kode belum rapi.** `vendor/bin/pint --test` gagal di hampir semua file
+   lama. Jalankan Pint seluruh project dalam satu commit tersendiri, jangan dicampur
+   dengan perubahan logika.

@@ -39,12 +39,12 @@
 
             {{-- START: TEKS INSTRUKSI BARU DITAMBAHKAN DI SINI --}}
             <p class="text-gray-300 text-sm mb-4">
-                Untuk verifikasi akun alumni, Anda dapat memilih salah satu metode: Masukkan alamat email Anda, <span class="font-semibold text-white">ATAU</span> unggah dokumen bukti alumni (misal: KTM lama/sertifikat PKKMB).
+                Masukkan alamat email Anda (dipakai untuk login). Untuk mempercepat verifikasi, unggah juga dokumen bukti alumni (misal: KTM lama/sertifikat PKKMB).
             </p>
             {{-- END: TEKS INSTRUKSI BARU --}}
 
             <div>
-                <input type="email" id="email" name="email" placeholder="e-mail" class="input-field mb-4 @error('email') border-red-500 @enderror" value="{{ old('email') }}">
+                <input type="email" id="email" name="email" placeholder="e-mail" required class="input-field mb-4 @error('email') border-red-500 @enderror" value="{{ old('email') }}">
                 @error('email')
                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                 @enderror

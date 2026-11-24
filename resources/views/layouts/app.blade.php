@@ -435,6 +435,13 @@
                 }
             }
 
+            // Teks notifikasi berisi nama pengguna, jadi wajib di-escape sebelum masuk innerHTML.
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text ?? '';
+                return div.innerHTML.replace(/"/g, '&quot;');
+            }
+
             function renderNotifications(notifications) {
                 if (notifications.length === 0) {
                     notificationsList.innerHTML = `
@@ -473,13 +480,13 @@
                              onclick="markAsRead(${notification.id})">
                             <div class="flex items-start space-x-3">
                                 <div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
-                                    <img src="${notification.from_user?.profile_picture || 'https://via.placeholder.com/40/cccccc/ffffff?text=' + (notification.from_user?.name?.charAt(0) || 'U')}" 
+                                    <img src="${escapeHtml(notification.from_user?.profile_picture || 'https://via.placeholder.com/40/cccccc/ffffff?text=' + encodeURIComponent(notification.from_user?.name?.charAt(0) || 'U'))}"
                                          alt="Profile" class="w-full h-full object-cover">
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <p class="font-semibold text-sm text-gray-800">${notification.title}</p>
-                                    <p class="text-sm text-gray-600 mt-1">${notification.message}</p>
-                                    <p class="text-xs text-gray-400 mt-1">${notification.created_at}</p>
+                                    <p class="font-semibold text-sm text-gray-800">${escapeHtml(notification.title)}</p>
+                                    <p class="text-sm text-gray-600 mt-1">${escapeHtml(notification.message)}</p>
+                                    <p class="text-xs text-gray-400 mt-1">${escapeHtml(notification.created_at)}</p>
                                     ${actionButton}
                                 </div>
                                 ${isUnread ? '<div class="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>' : ''}

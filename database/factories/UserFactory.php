@@ -24,8 +24,17 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => fake()->name(),
+            // Default: mahasiswa yang sudah menyelesaikan onboarding.
+            'full_name' => fake()->name(),
+            'username' => fake()->unique()->userName(),
             'email' => fake()->unique()->safeEmail(),
+            'role' => 'mahasiswa',
+            'is_verified' => true,
+            'prodi' => 'Teknologi Informasi',
+            'fakultas' => 'Teknik',
+            'gender' => 'Laki-laki',
+            'interests' => ['coding'],
+            'match_categories' => ['pkm'],
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),

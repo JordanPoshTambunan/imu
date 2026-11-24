@@ -403,7 +403,7 @@
                         </div>
                         <div class="flex-1">
                             <div class="flex items-center space-x-2">
-                                <p class="font-semibold text-gray-800">${message.sender.full_name}</p>
+                                <p class="font-semibold text-gray-800">${escapeHtml(message.sender.full_name)}</p>
                                 <span class="bg-blue-200 text-blue-800 text-xs font-semibold px-2 py-0.5 rounded-full">${message.sender.role.charAt(0).toUpperCase() + message.sender.role.slice(1)}</span>
                                 ${message.sender.role === 'admin' ? '<span class="text-blue-500 text-sm">✓</span>' : ''}
                             </div>
