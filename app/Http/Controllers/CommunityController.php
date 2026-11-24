@@ -68,18 +68,9 @@ class CommunityController extends Controller
             // ✅ ENHANCED: Eager loading dengan reactions dan comments untuk performance
             if ($selectedGroup) {
                 $groupMessages = GroupMessage::where('group_id', $selectedGroup->id)
-                                            ->with([
-                                                'sender:id,full_name,role,profile_picture', // Eager load data pengirim
-                                                'reactions' => function($query) { // ✅ NEW: Load reactions
-                                                    $query->with('user:id,full_name');
-                                                },
-                                                'comments' => function($query) { // ✅ NEW: Load comments
-                                                    $query->with('user:id,full_name,profile_picture')
-                                                          ->whereNull('parent_id') // Only top-level
-                                                          ->orderBy('created_at', 'asc')
-                                                          ->limit(3); // Load 3 comments per message
-                                                }
-                                            ])
+                                            // Komentar dimuat saat dibuka (loadComments); di sini cukup jumlahnya.
+                                            ->with(['sender:id,full_name,role,profile_picture', 'reactions:id,message_id,user_id'])
+                                            ->withCount('comments')
                                             ->orderBy('created_at', 'desc')
                                             ->limit(50) // ✅ NEW: Batasi untuk performance
                                             ->get()
@@ -212,7 +203,7 @@ class CommunityController extends Controller
                     'group_id' => $message->group_id,
                     'sender_id' => $message->sender_id,
                     'message_content' => $message->message_content,
-                    'created_at' => $message->created_at->format('H:i A, d M Y'),
+                    'created_at' => $message->created_at->format('d M Y, H:i'),
                     'has_attachment' => $message->hasAttachment(), // ✅ NEW
                     'attachment_url' => $message->attachment_url, // ✅ NEW
                     'attachment_name' => $message->attachment_name, // ✅ NEW
@@ -398,7 +389,7 @@ class CommunityController extends Controller
                     'user_id' => $comment->user_id,
                     'comment_content' => $comment->comment_content,
                     'parent_id' => $comment->parent_id,
-                    'created_at' => $comment->created_at->format('H:i A, d M Y'),
+                    'created_at' => $comment->created_at->format('d M Y, H:i'),
                     'is_reply' => $comment->isReply(),
                     'user' => [
                         'id' => $comment->user->id,
@@ -467,7 +458,7 @@ class CommunityController extends Controller
                     return [
                         'id' => $comment->id,
                         'comment_content' => $comment->comment_content,
-                        'created_at' => $comment->created_at->format('H:i A, d M Y'),
+                        'created_at' => $comment->created_at->format('d M Y, H:i'),
                         'user' => [
                             'id' => $comment->user->id,
                             'full_name' => $comment->user->full_name,
@@ -477,7 +468,7 @@ class CommunityController extends Controller
                             return [
                                 'id' => $reply->id,
                                 'comment_content' => $reply->comment_content,
-                                'created_at' => $reply->created_at->format('H:i A, d M Y'),
+                                'created_at' => $reply->created_at->format('d M Y, H:i'),
                                 'user' => [
                                     'id' => $reply->user->id,
                                     'full_name' => $reply->user->full_name,
@@ -662,7 +653,7 @@ class CommunityController extends Controller
                         'id' => $message->id,
                         'sender_id' => $message->sender_id,
                         'message_content' => $message->message_content,
-                        'created_at' => $message->created_at->format('H:i A, d M Y'),
+                        'created_at' => $message->created_at->format('d M Y, H:i'),
                         'has_attachment' => $message->hasAttachment(), // ✅ NEW
                         'attachment_url' => $message->attachment_url, // ✅ NEW
                         'attachment_name' => $message->attachment_name, // ✅ NEW

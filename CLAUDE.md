@@ -154,6 +154,22 @@ Ekstensi file yang disimpan diturunkan dari isi file (`guessExtension()`), bukan
 `getClientOriginalExtension()`. Dokumen identitas (verifikasi alumni) disimpan di
 disk privat `local`, bukan `public`; `verification_doc_path` relatif terhadap disk itu.
 
+### Tampilan
+
+- **Warna** hanya dari token di `layouts/app.blade.php` (`tailwind.config`):
+  `navy-900 #00296b`, `navy-800 #003f88`, `navy-700 #00509d`, `gold-500 #fdc500`,
+  `gold-400 #ffd500`, plus tint `navy-50/100` dan `gold-100`. Jangan pakai
+  `blue-*`/`orange-*` bawaan Tailwind. Teks di atas `gold-*` selalu `text-navy-900`.
+- **Kelas dasar** juga di layout: `card`, `input`, `btn-primary`, `btn-accent`,
+  `btn-ghost`, `chip`, `tag`, `page-title`. Pakai ini sebelum menulis kelas baru.
+- **Avatar**: `<x-avatar :user="$user" />`; di JS pakai `avatarHtml(name)`.
+  `via.placeholder.com` sudah mati — jangan dipakai.
+- Setiap view yang memakai `@section('content')` **wajib** ditutup `@endsection`.
+  Tanpa itu isinya tercetak sebelum `<!DOCTYPE>`. `tests/Feature/PageTest.php`
+  menjaga ini; tambahkan halaman baru ke daftar di sana.
+- Jangan menulis `<x-...>` di dalam komentar JS/HTML: Blade tetap mengompilasinya.
+- Teks UI dalam Bahasa Indonesia. Zona waktu app `Asia/Makassar` (WITA), locale `id`.
+
 ### Jangan escape HTML saat menyimpan
 
 Blade `{{ }}` sudah meng-escape otomatis saat render. Meng-escape lagi sebelum
@@ -228,8 +244,12 @@ Diurutkan dari yang paling memblokir.
    login, finding people, dan halaman notifikasi (`tests/Feature`). Chat dan
    like/match belum diuji.
 
-7. **Chat belum real-time.** Masih polling lewat `/chat/messages`;
-   `BROADCAST_CONNECTION=log`.
+7. **Chat belum real-time.** Halaman chat polling `/chat/messages` tiap 5 detik;
+   `BROADCAST_CONNECTION=log`. Komentar community hanya memuat 10 komentar pertama
+   (belum ada tombol "muat lagi") dan balasan bertingkat belum bisa dibuat dari UI.
+
+10. **Belum ada upload foto profil.** Kolom `profile_picture` ada, tapi tidak ada
+    form untuk mengisinya; semua avatar menampilkan inisial.
 
 8. **`deleteAttachment` belum dibuat.** Route-nya sudah dihapus sampai methodnya ada.
 

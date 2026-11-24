@@ -1,519 +1,308 @@
 @extends('layouts.app')
 
-@section('content')
-<div class="main-card w-full max-w-4xl h-[600px] flex flex-col bg-white rounded-lg shadow-xl overflow-hidden text-gray-800 p-0">
+@section('title', 'Komunitas')
 
-    {{-- TOP SECTION: Horizontal Scrollable Community List --}}
-    <div class="p-4 border-b border-gray-200 bg-gray-50">
-        <div class="flex space-x-4 overflow-x-auto pb-2 scrollbar-hide">
+@section('content')
+@php
+    // Samakan dengan CommunityController::checkPostPermission.
+    $canPostIn = fn ($group) => $currentUser->role === 'admin'
+        || in_array($currentUser->id, [$group->creator_id, $group->moderator_id], true);
+    $postableGroups = $communities->filter($canPostIn);
+@endphp
+
+<div class="grid w-full max-w-6xl gap-6 lg:grid-cols-[16rem_1fr]">
+    {{-- Daftar komunitas --}}
+    <aside class="card h-fit p-3">
+        <h1 class="px-2 pb-2 pt-1 text-lg font-bold text-navy-900">Komunitas</h1>
+        <nav class="flex gap-2 overflow-x-auto scrollbar-hide lg:flex-col lg:overflow-visible" aria-label="Daftar komunitas">
             @forelse ($communities as $community)
-                {{-- Mengarahkan ke grup spesifik dan menandai yang aktif --}}
-                <a href="{{ route('community', ['group' => $community->id]) }}" 
-                   class="community-circle flex-shrink-0 text-center transition-all duration-200 hover:transform hover:scale-105 {{ ($selectedGroup && $selectedGroup->id === $community->id) ? 'border-2 border-blue-600 p-1 rounded-full' : '' }}">
-                    <div class="w-16 h-16 rounded-full mx-auto mb-1 flex items-center justify-center text-2xl {{ ($selectedGroup && $selectedGroup->id === $community->id) ? 'bg-blue-500 text-white' : 'bg-gray-200' }}">
-                        {{-- Ikon berdasarkan nama komunitas --}}
-                        @switch($community->name)
-                            @case('Pengumuman Umum')
-                                📢
-                                @break
-                            @case('Info Beasiswa')
-                                🎓
-                                @break
-                            @case('Lowongan Kerja')
-                                💼
-                                @break
-                            @case('Event & Workshop')
-                                🎪
-                                @break
-                            @case('PKM & Kompetisi')
-                                🏆
-                                @break
-                            @case('Info Akademik')
-                                📚
-                                @break
-                            @default
-                                💬
-                        @endswitch
-                    </div>
-                    <p class="text-xs font-semibold {{ ($selectedGroup && $selectedGroup->id === $community->id) ? 'text-blue-800' : 'text-gray-700' }}">
-                        {{ Str::limit($community->name, 12) }}
-                    </p>
+                @php($active = $selectedGroup && $selectedGroup->id === $community->id)
+                <a href="{{ route('community', ['group' => $community->id]) }}" @if ($active) aria-current="page" @endif
+                   class="flex flex-shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition {{ $active ? 'bg-navy-800 text-white' : 'text-navy-900 hover:bg-navy-50' }}">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-lg {{ $active ? 'bg-gold-500 text-navy-900' : 'bg-navy-50 text-navy-800' }}">
+                        <i class="fas fa-hashtag text-xs"></i>
+                    </span>
+                    <span class="whitespace-nowrap lg:truncate">{{ $community->name }}</span>
                 </a>
             @empty
-                <div class="flex items-center justify-center w-full py-8">
-                    <div class="text-center">
-                        <div class="text-4xl mb-2">🏗️</div>
-                        <p class="text-gray-500 text-sm">Tidak ada komunitas yang tersedia.</p>
-                        <p class="text-gray-400 text-xs mt-1">Hubungi admin untuk membuat komunitas baru.</p>
-                    </div>
-                </div>
+                <p class="px-2 py-4 text-sm text-gray-500">Belum ada komunitas. Hubungi admin untuk membuatnya.</p>
             @endforelse
-        </div>
-    </div>
+        </nav>
+    </aside>
 
-    {{-- MAIN SECTION: Community Chat/Post Feed (Vertical Scrollable) --}}
-    <div class="flex flex-col flex-grow p-4 overflow-y-auto bg-gray-100" id="messages-container">
-        @if($selectedGroup)
-            <div class="flex items-center justify-between mb-4">
-                <h4 class="font-bold text-xl text-gray-900">📋 {{ $selectedGroup->name }}</h4>
-                <span class="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
-                    {{ $groupMessages->count() }} {{ $groupMessages->count() === 1 ? 'post' : 'posts' }}
-                </span>
-            </div>
-
-            {{-- Community Description --}}
-            @if($selectedGroup->description)
-                <div class="bg-blue-50 border-l-4 border-blue-400 p-3 mb-4 rounded">
-                    <p class="text-sm text-blue-800">{{ $selectedGroup->description }}</p>
+    <section class="min-w-0 space-y-4">
+        @if ($selectedGroup)
+            <header class="card p-5">
+                <div class="flex items-center justify-between gap-3">
+                    <h2 class="text-xl font-bold text-navy-900"># {{ $selectedGroup->name }}</h2>
+                    <span class="tag bg-navy-50 text-navy-800">{{ $groupMessages->count() }} postingan</span>
                 </div>
-            @endif
+                @if ($selectedGroup->description)
+                    <p class="mt-2 text-sm text-gray-600">{{ $selectedGroup->description }}</p>
+                @endif
+                @if ($selectedGroup->moderator)
+                    <p class="mt-2 text-xs text-gray-500"><i class="fas fa-shield-halved mr-1 text-navy-700"></i>Moderator: {{ $selectedGroup->moderator->full_name }}</p>
+                @endif
+            </header>
 
-            @forelse ($groupMessages as $message)
-                {{-- Postingan dari Community --}}
-                <div class="community-post-card bg-white p-4 rounded-lg shadow-md mb-4 border-l-4 border-blue-400">
-                    <div class="flex items-center mb-3">
-                        <div class="w-8 h-8 rounded-full bg-blue-500 mr-3 flex-shrink-0 overflow-hidden flex items-center justify-center">
-                            {{-- Menggunakan profile_picture pengirim pesan, atau placeholder --}}
-                            @if($message->sender->profile_picture)
-                                <img src="{{ $message->sender->profile_picture }}" alt="User Avatar" class="w-full h-full object-cover">
+            {{-- Form posting --}}
+            @if ($canPostIn($selectedGroup))
+                <form id="post-form" class="card p-5" enctype="multipart/form-data">
+                    <div class="mb-3 flex items-center gap-3">
+                        <x-avatar :user="$currentUser" />
+                        <p class="text-sm text-gray-600">Posting sebagai <span class="font-semibold text-navy-800">{{ ucfirst($currentUser->role) }}</span></p>
+                    </div>
+                    <label for="group-message-input" class="sr-only">Isi postingan</label>
+                    <textarea id="group-message-input" rows="3" maxlength="5000" class="input resize-y" placeholder="Bagikan pengumuman atau info penting…"></textarea>
+
+                    <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex flex-wrap items-center gap-3 text-sm">
+                            <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 font-medium text-navy-800 hover:bg-navy-50">
+                                <i class="fas fa-paperclip"></i> <span id="attachment-name">Lampiran</span>
+                                <input type="file" id="attachment-input" class="sr-only" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt">
+                            </label>
+                            @if ($postableGroups->count() > 1)
+                                <label class="inline-flex items-center gap-2 text-gray-600">Ke
+                                    <select id="community-select" class="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-navy-700 focus:outline-none">
+                                        @foreach ($postableGroups as $group)
+                                            <option value="{{ $group->id }}" @selected($group->id === $selectedGroup->id)>{{ $group->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </label>
                             @else
-                                <span class="text-white font-bold text-sm">{{ strtoupper(substr($message->sender->full_name ?? 'A', 0, 1)) }}</span>
+                                <input type="hidden" id="community-select" value="{{ $selectedGroup->id }}">
                             @endif
+                            <span id="char-counter" class="text-xs text-gray-400">0/5000</span>
                         </div>
-                        <div class="flex-1">
-                            <div class="flex items-center space-x-2">
-                                <p class="font-semibold text-gray-800">{{ $message->sender->full_name }}</p>
-                                <span class="bg-blue-200 text-blue-800 text-xs font-semibold px-2 py-0.5 rounded-full">
-                                    {{ ucfirst($message->sender->role) }}
-                                </span>
-                                @if($message->sender->role === 'admin')
-                                    <span class="text-blue-500 text-sm">✓</span>
-                                @endif
-                            </div>
-                            <p class="text-xs text-gray-500">{{ $message->created_at->format('d M Y, H:i') }} • {{ $message->created_at->diffForHumans() }}</p>
-                        </div>
-                        {{-- View community button --}}
-                        <a href="{{ route('community', ['group' => $selectedGroup->id]) }}" class="text-sm text-blue-600 hover:text-blue-800 transition-colors">
-                            <i class="fas fa-external-link-alt"></i>
-                        </a>
-                    </div>
-                    <div class="prose prose-sm max-w-none">
-                        <p class="text-gray-700 leading-relaxed whitespace-pre-wrap">{{ $message->message_content }}</p>
-                    </div>
-                    <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                        <div class="flex items-center space-x-4 text-gray-500 text-sm">
-                            {{-- Interaction buttons (future features) --}}
-                            <button class="flex items-center space-x-1 hover:text-blue-500 transition-colors">
-                                <i class="fas fa-heart"></i>
-                                <span>0</span>
-                            </button>
-                            <button class="flex items-center space-x-1 hover:text-blue-500 transition-colors">
-                                <i class="fas fa-comment"></i>
-                                <span>0</span>
-                            </button>
-                        </div>
-                        <button class="text-gray-400 hover:text-blue-500 transition-colors text-sm">
-                            <i class="fas fa-share-alt"></i>
+                        <button id="publish-button" type="submit" class="btn-primary py-2" disabled>
+                            <i class="fas fa-paper-plane"></i> Publikasikan
                         </button>
                     </div>
-                </div>
-            @empty
-                <div class="flex items-center justify-center flex-1">
-                    <div class="text-center py-12">
-                        <div class="text-6xl mb-4">📭</div>
-                        <h3 class="text-lg font-semibold text-gray-700 mb-2">Belum ada postingan</h3>
-                        <p class="text-gray-500 text-sm max-w-md mx-auto">
-                            Komunitas <strong>{{ $selectedGroup->name }}</strong> belum memiliki postingan. 
-                            @if($currentUser->id === $selectedGroup->creator_id || $currentUser->role === 'admin')
-                                Buat postingan pertama di bawah!
-                            @else
-                                Tunggu admin untuk memposting informasi.
-                            @endif
-                        </p>
+                </form>
+            @else
+                <p class="card flex items-center gap-2 p-4 text-sm text-gray-600"><i class="fas fa-lock text-navy-700"></i>Hanya admin, pembuat, dan moderator yang bisa memposting di sini.</p>
+            @endif
+
+            {{-- Postingan, terbaru di atas --}}
+            @forelse ($groupMessages->sortByDesc('created_at') as $message)
+                @php($liked = $message->reactions->contains('user_id', $currentUser->id))
+                <article class="card p-5" data-message-id="{{ $message->id }}">
+                    <div class="flex items-center gap-3">
+                        <x-avatar :user="$message->sender" />
+                        <div class="min-w-0">
+                            <p class="flex flex-wrap items-center gap-2">
+                                <span class="font-semibold text-navy-900">{{ $message->sender->full_name }}</span>
+                                <span class="tag {{ $message->sender->role === 'admin' ? 'bg-gold-500 text-navy-900' : 'bg-navy-50 text-navy-800' }}">{{ ucfirst($message->sender->role) }}</span>
+                            </p>
+                            <p class="text-xs text-gray-500" title="{{ $message->created_at->format('d M Y, H:i') }}">{{ $message->created_at->diffForHumans() }}</p>
+                        </div>
                     </div>
+
+                    @if ($message->message_content)
+                        <p class="mt-3 whitespace-pre-wrap break-words leading-relaxed text-gray-800">{{ $message->message_content }}</p>
+                    @endif
+
+                    @if ($message->hasAttachment())
+                        @if ($message->isImageAttachment())
+                            <a href="{{ $message->attachment_url }}" target="_blank" rel="noopener" class="mt-3 block">
+                                <img src="{{ $message->attachment_url }}" alt="{{ $message->attachment_name }}" class="max-h-96 rounded-xl object-contain">
+                            </a>
+                        @else
+                            <a href="{{ $message->attachment_url }}" download="{{ $message->attachment_name }}" class="mt-3 flex items-center gap-3 rounded-xl border border-navy-100 p-3 hover:bg-navy-50">
+                                <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-navy-50 text-navy-800"><i class="fas fa-file-lines"></i></span>
+                                <span class="min-w-0">
+                                    <span class="block truncate text-sm font-medium text-navy-900">{{ $message->attachment_name }}</span>
+                                    <span class="text-xs text-gray-500">{{ $message->formatted_file_size }}</span>
+                                </span>
+                                <i class="fas fa-download ml-auto text-gray-400"></i>
+                            </a>
+                        @endif
+                    @endif
+
+                    <div class="mt-4 flex items-center gap-2 border-t border-gray-100 pt-3 text-sm">
+                        <button type="button" class="like-button inline-flex items-center gap-2 rounded-lg px-3 py-1.5 font-medium transition hover:bg-navy-50 {{ $liked ? 'text-gold-500' : 'text-gray-500' }}" aria-pressed="{{ $liked ? 'true' : 'false' }}">
+                            <i class="fas fa-heart"></i> <span class="like-count">{{ $message->reactions->count() }}</span><span class="sr-only"> suka</span>
+                        </button>
+                        <button type="button" class="comment-toggle inline-flex items-center gap-2 rounded-lg px-3 py-1.5 font-medium text-gray-500 transition hover:bg-navy-50" aria-expanded="false">
+                            <i class="fas fa-comment"></i> <span class="comment-count">{{ $message->comments_count }}</span><span class="sr-only"> komentar</span>
+                        </button>
+                    </div>
+
+                    <div class="comment-panel mt-3 hidden space-y-3">
+                        <div class="comment-list space-y-3"></div>
+                        <form class="comment-form flex items-center gap-2">
+                            <label class="sr-only" for="comment-{{ $message->id }}">Tulis komentar</label>
+                            <input id="comment-{{ $message->id }}" type="text" maxlength="1000" placeholder="Tulis komentar…" class="input rounded-full bg-gray-50 py-2 text-sm">
+                            <button type="submit" class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-navy-800 text-white hover:bg-navy-700" aria-label="Kirim komentar"><i class="fas fa-paper-plane text-xs"></i></button>
+                        </form>
+                    </div>
+                </article>
+            @empty
+                <div class="card p-10 text-center">
+                    <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-navy-50 text-xl text-navy-800"><i class="fas fa-inbox"></i></span>
+                    <p class="mt-4 font-semibold text-navy-900">Belum ada postingan</p>
+                    <p class="mt-1 text-sm text-gray-500">{{ $canPostIn($selectedGroup) ? 'Jadilah yang pertama memposting di sini.' : 'Tunggu admin atau moderator membagikan info.' }}</p>
                 </div>
             @endforelse
         @else
-            {{-- No community selected --}}
-            <div class="flex items-center justify-center flex-1">
-                <div class="text-center">
-                    <div class="text-6xl mb-4">🎯</div>
-                    <h3 class="text-lg font-semibold text-gray-700 mb-2">Pilih Komunitas</h3>
-                    <p class="text-gray-500 text-sm">Pilih salah satu komunitas di atas untuk melihat postingan terbaru.</p>
-                </div>
+            <div class="card p-10 text-center">
+                <p class="font-semibold text-navy-900">Pilih komunitas</p>
+                <p class="mt-1 text-sm text-gray-500">Pilih salah satu komunitas untuk melihat postingannya.</p>
             </div>
         @endif
-
-        {{-- Area untuk "write your post here" --}}
-        @if ($selectedGroup && ($currentUser->id === $selectedGroup->creator_id || $currentUser->role === 'admin'))
-        <div class="write-post-area bg-white p-4 rounded-lg shadow-md mt-4 border-2 border-dashed border-blue-300">
-            <div class="flex items-start space-x-3 mb-3">
-                <div class="w-8 h-8 rounded-full bg-blue-500 flex-shrink-0 flex items-center justify-center">
-                    @if($currentUser->profile_picture)
-                        <img src="{{ $currentUser->profile_picture }}" alt="Your Avatar" class="w-full h-full object-cover rounded-full">
-                    @else
-                        <span class="text-white font-bold text-sm">{{ strtoupper(substr($currentUser->full_name ?? 'U', 0, 1)) }}</span>
-                    @endif
-                </div>
-                <div class="flex-1">
-                    <p class="text-sm font-medium text-gray-700">Buat postingan sebagai <span class="text-blue-600">{{ ucfirst($currentUser->role) }}</span></p>
-                    <p class="text-xs text-gray-500">Postingan akan terlihat oleh semua anggota komunitas {{ $selectedGroup->name }}</p>
-                </div>
-            </div>
-            
-            <textarea id="group-message-input" 
-                      class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none transition-all" 
-                      rows="4" 
-                      placeholder="Tulis pengumuman atau informasi penting untuk komunitas..."
-                      maxlength="5000"></textarea>
-            
-            {{-- Character Counter --}}
-            <div id="char-counter" class="text-xs text-gray-500 text-right mt-1">0/5000</div>
-            
-            <div class="flex justify-between items-center mt-3">
-                <div class="flex items-center space-x-2">
-                    <i class="fas fa-info-circle text-blue-500"></i>
-                    <span class="text-xs text-gray-600">Posting ke:</span>
-                    <select id="community-select" class="text-xs px-2 py-1 border border-gray-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
-                        @forelse ($communities as $communityOption)
-                            @if ($communityOption->creator_id === $currentUser->id || $currentUser->role === 'admin')
-                                <option value="{{ $communityOption->id }}" {{ ($selectedGroup && $selectedGroup->id === $communityOption->id) ? 'selected' : '' }}>
-                                    {{ $communityOption->name }}
-                                </option>
-                            @endif
-                        @empty
-                            <option value="">Tidak ada komunitas tersedia</option>
-                        @endforelse
-                    </select>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <button id="publish-group-post-button" 
-                            class="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2"
-                            disabled>
-                        <span id="publish-button-text">Publikasikan</span>
-                        <i id="publish-button-icon" class="fas fa-paper-plane"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-        @elseif($selectedGroup)
-            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-4 text-center">
-                <i class="fas fa-lock text-gray-400 text-lg mb-2"></i>
-                <p class="text-gray-600 text-sm">Hanya admin dan pembuat komunitas yang dapat memposting di saluran ini.</p>
-            </div>
-        @endif
-
-    </div> {{-- End of Community Chat/Post Feed --}}
-
-</div> {{-- End of main-card container --}}
-
-{{-- Loading Overlay --}}
-<div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-lg p-6 text-center">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-        <p class="text-gray-700">Memposting...</p>
-    </div>
+    </section>
 </div>
-
-{{-- Success/Error Toast Container --}}
-<div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+@endsection
 
 @push('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const groupMessageInput = document.getElementById('group-message-input');
-        const publishGroupPostButton = document.getElementById('publish-group-post-button');
-        const publishButtonText = document.getElementById('publish-button-text');
-        const publishButtonIcon = document.getElementById('publish-button-icon');
-        const communitySelect = document.getElementById('community-select');
-        const messagesContainer = document.getElementById('messages-container');
-        const loadingOverlay = document.getElementById('loading-overlay');
-        const toastContainer = document.getElementById('toast-container');
-        const charCounter = document.getElementById('char-counter');
+    document.addEventListener('DOMContentLoaded', function () {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+        const jsonHeaders = { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken };
 
-        // Scroll ke bawah saat halaman dimuat
-        if (messagesContainer) {
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        function toast(message, isError = false) {
+            const el = document.createElement('div');
+            el.setAttribute('role', 'status');
+            el.className = `fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-xl px-5 py-3 text-sm font-semibold shadow-lg ${isError ? 'bg-red-600 text-white' : 'bg-navy-900 text-white'}`;
+            el.textContent = message;
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 3000);
         }
 
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        // ---- Posting ----
+        const postForm = document.getElementById('post-form');
+        if (postForm) {
+            const textarea = document.getElementById('group-message-input');
+            const attachment = document.getElementById('attachment-input');
+            const attachmentName = document.getElementById('attachment-name');
+            const publishButton = document.getElementById('publish-button');
+            const counter = document.getElementById('char-counter');
 
-        // Pastikan elemen input ada sebelum menambahkan event listener
-        if (groupMessageInput && publishGroupPostButton && communitySelect) {
-            
-            // Enable/disable button based on input
-            function updateButtonState() {
-                const hasContent = groupMessageInput.value.trim().length > 0;
-                const isValidLength = groupMessageInput.value.length <= 5000;
-                const isEnabled = hasContent && isValidLength;
-                
-                publishGroupPostButton.disabled = !isEnabled;
-                
-                if (isEnabled) {
-                    publishGroupPostButton.classList.remove('disabled:bg-gray-400', 'disabled:cursor-not-allowed');
-                    publishGroupPostButton.classList.add('bg-blue-500', 'hover:bg-blue-600');
-                } else {
-                    publishGroupPostButton.classList.add('disabled:bg-gray-400', 'disabled:cursor-not-allowed');
-                    publishGroupPostButton.classList.remove('bg-blue-500', 'hover:bg-blue-600');
-                }
-            }
-
-            // Character counter update
-            function updateCharCounter() {
-                const currentLength = groupMessageInput.value.length;
-                const maxLength = 5000;
-                charCounter.textContent = `${currentLength}/${maxLength}`;
-                
-                if (currentLength > maxLength * 0.9) {
-                    charCounter.className = 'text-xs text-orange-500 text-right mt-1';
-                } else if (currentLength >= maxLength) {
-                    charCounter.className = 'text-xs text-red-500 text-right mt-1';
-                } else {
-                    charCounter.className = 'text-xs text-gray-500 text-right mt-1';
-                }
-            }
-
-            // Auto-resize textarea
-            function autoResize() {
-                groupMessageInput.style.height = 'auto';
-                groupMessageInput.style.height = Math.min(groupMessageInput.scrollHeight, 120) + 'px';
-            }
-
-            // Initial state check
-            updateButtonState();
-            updateCharCounter();
-
-            // Event listeners
-            groupMessageInput.addEventListener('input', function() {
-                updateButtonState();
-                updateCharCounter();
-                autoResize();
+            const refresh = () => {
+                counter.textContent = `${textarea.value.length}/5000`;
+                publishButton.disabled = textarea.value.trim() === '' && !attachment.files.length;
+            };
+            textarea.addEventListener('input', refresh);
+            attachment.addEventListener('change', () => {
+                attachmentName.textContent = attachment.files[0]?.name ?? 'Lampiran';
+                refresh();
             });
 
-            publishGroupPostButton.addEventListener('click', sendGroupMessage);
-            
-            groupMessageInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                    e.preventDefault();
-                    sendGroupMessage();
-                }
-            });
+            postForm.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const groupId = document.getElementById('community-select').value;
+                const body = new FormData();
+                body.append('group_id', groupId);
+                body.append('message_content', textarea.value.trim());
+                if (attachment.files.length) body.append('attachment', attachment.files[0]);
 
-            async function sendGroupMessage() {
-                const messageContent = groupMessageInput.value.trim();
-                const groupId = communitySelect.value;
-
-                if (messageContent === '' || !groupId) {
-                    showToast('Pesan tidak boleh kosong dan pilih komunitas yang valid.', 'error');
-                    return;
-                }
-
-                if (messageContent.length > 5000) {
-                    showToast('Pesan terlalu panjang. Maksimal 5000 karakter.', 'error');
-                    return;
-                }
-
-                // Show loading state
-                setLoadingState(true);
-
+                publishButton.disabled = true;
                 try {
                     const response = await fetch('{{ route('community.send_message') }}', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken
-                        },
-                        body: JSON.stringify({
-                            group_id: groupId,
-                            message_content: messageContent
-                        })
+                        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                        body,
                     });
-
                     const data = await response.json();
-                    
-                    if (response.ok && data.status === 'success') {
-                        console.log('Pesan grup berhasil dikirim:', data.message);
-                        
-                        // Clear input
-                        groupMessageInput.value = '';
-                        updateButtonState();
-                        updateCharCounter();
-                        autoResize();
-                        
-                        // Add message to UI
-                        appendGroupMessageToUI(data.sent_message);
-                        
-                        // Scroll to bottom
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                        
-                        // Show success toast
-                        showToast('Postingan berhasil dipublikasikan!', 'success');
-                        
-                    } else {
-                        console.error('Gagal mengirim pesan grup:', data.message || 'Terjadi kesalahan.');
-                        showToast(data.message || 'Gagal memposting. Silakan coba lagi.', 'error');
+                    if (!response.ok) {
+                        const firstError = data.errors ? Object.values(data.errors)[0][0] : null;
+                        throw new Error(firstError || data.message || 'Gagal memposting.');
                     }
+                    window.location.href = `{{ route('community') }}?group=${groupId}`;
                 } catch (error) {
-                    console.error('Error saat mengirim pesan grup:', error);
-                    showToast('Terjadi kesalahan jaringan. Periksa koneksi internet Anda.', 'error');
-                } finally {
-                    setLoadingState(false);
-                }
-            }
-
-            function setLoadingState(isLoading) {
-                if (isLoading) {
-                    loadingOverlay.classList.remove('hidden');
-                    publishGroupPostButton.disabled = true;
-                    publishButtonText.textContent = 'Memposting...';
-                    publishButtonIcon.className = 'fas fa-spinner fa-spin';
-                    groupMessageInput.disabled = true;
-                } else {
-                    loadingOverlay.classList.add('hidden');
-                    publishGroupPostButton.disabled = groupMessageInput.value.trim().length === 0;
-                    publishButtonText.textContent = 'Publikasikan';
-                    publishButtonIcon.className = 'fas fa-paper-plane';
-                    groupMessageInput.disabled = false;
-                    updateButtonState();
-                }
-            }
-
-            function appendGroupMessageToUI(message) {
-                const postCard = document.createElement('div');
-                postCard.className = 'community-post-card bg-white p-4 rounded-lg shadow-md mb-4 border-l-4 border-blue-400';
-
-                const currentTime = new Date();
-                const timeString = currentTime.toLocaleDateString('id-ID', { 
-                    day: 'numeric', 
-                    month: 'short', 
-                    year: 'numeric' 
-                }) + ', ' + currentTime.toLocaleTimeString('id-ID', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                });
-
-                postCard.innerHTML = `
-                    <div class="flex items-center mb-3">
-                        <div class="w-8 h-8 rounded-full bg-blue-500 mr-3 flex-shrink-0 overflow-hidden flex items-center justify-center">
-                            @if(Auth::user()->profile_picture)
-                                <img src="{{ Auth::user()->profile_picture }}" alt="User Avatar" class="w-full h-full object-cover">
-                            @else
-                                <span class="text-white font-bold text-sm">{{ strtoupper(substr(Auth::user()->full_name ?? 'U', 0, 1)) }}</span>
-                            @endif
-                        </div>
-                        <div class="flex-1">
-                            <div class="flex items-center space-x-2">
-                                <p class="font-semibold text-gray-800">${escapeHtml(message.sender.full_name)}</p>
-                                <span class="bg-blue-200 text-blue-800 text-xs font-semibold px-2 py-0.5 rounded-full">${message.sender.role.charAt(0).toUpperCase() + message.sender.role.slice(1)}</span>
-                                ${message.sender.role === 'admin' ? '<span class="text-blue-500 text-sm">✓</span>' : ''}
-                            </div>
-                            <p class="text-xs text-gray-500">${timeString} • Baru saja</p>
-                        </div>
-                        <a href="{{ route('community', ['group' => $selectedGroup->id ?? 0]) }}" class="text-sm text-blue-600 hover:text-blue-800 transition-colors">
-                            <i class="fas fa-external-link-alt"></i>
-                        </a>
-                    </div>
-                    <div class="prose prose-sm max-w-none">
-                        <p class="text-gray-700 leading-relaxed whitespace-pre-wrap">${escapeHtml(message.message_content)}</p>
-                    </div>
-                    <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                        <div class="flex items-center space-x-4 text-gray-500 text-sm">
-                            <button class="flex items-center space-x-1 hover:text-blue-500 transition-colors">
-                                <i class="fas fa-heart"></i>
-                                <span>0</span>
-                            </button>
-                            <button class="flex items-center space-x-1 hover:text-blue-500 transition-colors">
-                                <i class="fas fa-comment"></i>
-                                <span>0</span>
-                            </button>
-                        </div>
-                        <button class="text-gray-400 hover:text-blue-500 transition-colors text-sm">
-                            <i class="fas fa-share-alt"></i>
-                        </button>
-                    </div>
-                `;
-
-                // Insert the new message at the end before the input area
-                const inputArea = document.querySelector('.write-post-area');
-                if (inputArea) {
-                    messagesContainer.insertBefore(postCard, inputArea);
-                } else {
-                    messagesContainer.appendChild(postCard);
-                }
-            }
-
-            function escapeHtml(text) {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
-            }
-
-            function showToast(message, type = 'info') {
-                const toast = document.createElement('div');
-                const typeClasses = {
-                    'success': 'bg-green-500 text-white',
-                    'error': 'bg-red-500 text-white',
-                    'warning': 'bg-yellow-500 text-white',
-                    'info': 'bg-blue-500 text-white'
-                };
-
-                const typeIcons = {
-                    'success': 'fas fa-check-circle',
-                    'error': 'fas fa-exclamation-circle',
-                    'warning': 'fas fa-exclamation-triangle',
-                    'info': 'fas fa-info-circle'
-                };
-
-                toast.className = `flex items-center space-x-3 ${typeClasses[type]} px-4 py-3 rounded-lg shadow-lg transform translate-x-full transition-transform duration-300 max-w-sm`;
-                
-                toast.innerHTML = `
-                    <i class="${typeIcons[type]}"></i>
-                    <span class="flex-1">${message}</span>
-                    <button onclick="this.parentElement.remove()" class="text-white hover:text-gray-200">
-                        <i class="fas fa-times"></i>
-                    </button>
-                `;
-
-                toastContainer.appendChild(toast);
-
-                // Animate in
-                setTimeout(() => {
-                    toast.classList.remove('translate-x-full');
-                }, 100);
-
-                // Auto remove after 5 seconds
-                setTimeout(() => {
-                    toast.classList.add('translate-x-full');
-                    setTimeout(() => {
-                        if (toast.parentElement) {
-                            toast.remove();
-                        }
-                    }, 300);
-                }, 5000);
-            }
-        }
-
-        // Auto-scroll to bottom on new messages (for real-time updates)
-        const observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                    // Check if added node is a message card
-                    const hasMessageCard = Array.from(mutation.addedNodes).some(node => 
-                        node.classList && node.classList.contains('community-post-card')
-                    );
-                    
-                    if (hasMessageCard) {
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                    }
+                    toast(error.message, true);
+                    refresh();
                 }
             });
-        });
-
-        if (messagesContainer) {
-            observer.observe(messagesContainer, { childList: true });
         }
+
+        // ---- Suka ----
+        document.querySelectorAll('.like-button').forEach(button => button.addEventListener('click', async function () {
+            const messageId = this.closest('[data-message-id]').dataset.messageId;
+            try {
+                const response = await fetch('{{ route('community.add_reaction') }}', {
+                    method: 'POST', headers: jsonHeaders,
+                    body: JSON.stringify({ message_id: messageId, reaction_type: 'like' }),
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message);
+                const liked = data.user_reaction !== null;
+                this.setAttribute('aria-pressed', liked);
+                this.classList.toggle('text-gold-500', liked);
+                this.classList.toggle('text-gray-500', !liked);
+                this.querySelector('.like-count').textContent = Object.values(data.reaction_counts).reduce((a, b) => a + Number(b), 0);
+            } catch (error) {
+                toast(error.message || 'Gagal menyimpan suka.', true);
+            }
+        }));
+
+        // ---- Komentar ----
+        function commentElement(comment, isReply = false) {
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex gap-2 ${isReply ? 'ml-10' : ''}`;
+            wrapper.innerHTML = avatarHtml(comment.user.full_name, 'w-8 h-8 text-xs');
+            const bubble = document.createElement('div');
+            bubble.className = 'min-w-0 rounded-2xl bg-navy-50 px-3 py-2';
+            const name = document.createElement('p');
+            name.className = 'text-xs font-semibold text-navy-900';
+            name.textContent = comment.user.full_name;
+            const text = document.createElement('p');
+            text.className = 'whitespace-pre-wrap break-words text-sm text-gray-800';
+            text.textContent = comment.comment_content;
+            const time = document.createElement('p');
+            time.className = 'mt-0.5 text-[11px] text-gray-400';
+            time.textContent = comment.created_at;
+            bubble.append(name, text, time);
+            wrapper.appendChild(bubble);
+            return wrapper;
+        }
+
+        document.querySelectorAll('.comment-toggle').forEach(button => button.addEventListener('click', async function () {
+            const card = this.closest('[data-message-id]');
+            const panel = card.querySelector('.comment-panel');
+            const open = panel.classList.toggle('hidden') === false;
+            this.setAttribute('aria-expanded', open);
+            if (!open || panel.dataset.loaded) return;
+
+            const list = panel.querySelector('.comment-list');
+            list.innerHTML = '<p class="text-sm text-gray-400"><i class="fas fa-spinner fa-spin mr-1"></i>Memuat komentar…</p>';
+            try {
+                const response = await fetch(`{{ route('community.load_comments') }}?message_id=${card.dataset.messageId}`, { headers: { 'Accept': 'application/json' } });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message);
+                list.innerHTML = data.comments.length ? '' : '<p class="empty-comments text-sm text-gray-400">Belum ada komentar.</p>';
+                data.comments.forEach(comment => {
+                    list.appendChild(commentElement(comment));
+                    comment.replies.forEach(reply => list.appendChild(commentElement(reply, true)));
+                });
+                panel.dataset.loaded = '1';
+            } catch (error) {
+                list.innerHTML = '<p class="text-sm text-red-600">Gagal memuat komentar.</p>';
+            }
+        }));
+
+        document.querySelectorAll('.comment-form').forEach(form => form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const card = this.closest('[data-message-id]');
+            const input = this.querySelector('input');
+            const content = input.value.trim();
+            if (!content) return;
+            try {
+                const response = await fetch('{{ route('community.add_comment') }}', {
+                    method: 'POST', headers: jsonHeaders,
+                    body: JSON.stringify({ message_id: card.dataset.messageId, comment_content: content }),
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.errors ? Object.values(data.errors)[0][0] : data.message);
+                const list = card.querySelector('.comment-list');
+                list.querySelector('.empty-comments')?.remove();
+                list.appendChild(commentElement(data.comment));
+                card.querySelector('.comment-count').textContent = data.total_comments;
+                input.value = '';
+            } catch (error) {
+                toast(error.message || 'Gagal mengirim komentar.', true);
+            }
+        }));
     });
 </script>
 @endpush
-
-@endsection

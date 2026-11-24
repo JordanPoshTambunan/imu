@@ -13,9 +13,8 @@ use App\Http\Controllers\NotificationController;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', function () {
-    return view('welcome');
-})->name('welcome');
+// Belum ada landing page: arahkan langsung ke app atau ke halaman masuk.
+Route::get('/', fn () => redirect()->route(auth()->check() ? 'home' : 'login'))->name('welcome');
 
 /*
 |--------------------------------------------------------------------------

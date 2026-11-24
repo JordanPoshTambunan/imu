@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
+use App\Models\GroupMessage;
 use App\Models\UserInteraction;
 
 class AuthController extends Controller
@@ -266,7 +267,19 @@ class AuthController extends Controller
      */
     public function showHomePage()
     {
-        return view('home_feed');
+        $user = Auth::user();
+
+        return view('home_feed', [
+            'user' => $user,
+            'matchCount' => $user->matchesQuery()->count(),
+            'unreadMessageCount' => $user->receivedMessages()->whereNull('read_at')->count(),
+            'newLikeCount' => $user->notificationsReceived()->where('type', 'like_received')->where('is_read', false)->count(),
+            'latestPosts' => GroupMessage::whereHas('group', fn ($query) => $query->where('is_approved', true))
+                ->with(['sender:id,full_name,role,profile_picture', 'group:id,name'])
+                ->latest()
+                ->limit(5)
+                ->get(),
+        ]);
     }
 
     /**

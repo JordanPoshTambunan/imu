@@ -1,89 +1,53 @@
-@extends('layouts.app') {{-- Menggunakan layout dasar yang sudah kita buat --}}
+@extends('layouts.app')
+
+@section('title', 'Daftar Alumni')
+@section('main_class', 'auth-bg items-center justify-center')
 
 @section('content')
-<div class="main-card w-full max-w-4xl flex lg:absolute lg:top-1/2 lg:-translate-y-1/2 lg:right-10">
-    <div class="w-1/2 p-8 flex flex-col justify-center">
-        <h2 class="text-2xl font-bold mb-6">Make real connections with <br> students and alumni from <br> our campus!</h2>
-        <form method="POST" action="{{ route('register.store.alumni') }}" enctype="multipart/form-data">
+<div class="card grid w-full max-w-4xl overflow-hidden lg:grid-cols-2">
+    @include('auth._brand')
+
+    <div class="p-8 sm:p-10">
+        <h2 class="page-title">Buat akun</h2>
+        <p class="mt-1 text-sm text-gray-500">Akun alumni diverifikasi admin sebelum bisa dipakai.</p>
+
+        @include('auth._register_tabs', ['active' => 'alumni'])
+
+        <form method="POST" action="{{ route('register.store.alumni') }}" enctype="multipart/form-data" class="mt-6 space-y-4">
             @csrf
-            <div class="space-y-4">
-                <div>
-                    <input type="text" id="full_name" name="full_name" placeholder="Full Name" class="input-field @error('full_name') border-red-500 @enderror" value="{{ old('full_name') }}">
-                    @error('full_name')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <input type="text" id="username" name="username" placeholder="UserName" class="input-field @error('username') border-red-500 @enderror" value="{{ old('username') }}">
-                    @error('username')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <input type="password" id="password" name="password" placeholder="Password" class="input-field @error('password') border-red-500 @enderror">
-                    @error('password')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <input type="password" id="confirm_password" name="password_confirmation" placeholder="Confirm Password" class="input-field">
-                </div>
-            </div>
-    </div>
-    <div class="w-1/2 p-8 flex flex-col justify-between">
-        <div>
-            <div class="flex space-x-4 mb-6">
-                <a href="{{ route('register.student') }}" class="btn-outline px-6 py-2 rounded-full">Student</a>
-                <button type="button" class="btn-primary px-6 py-2 rounded-full cursor-not-allowed opacity-70">Alumni</button>
-            </div>
-
-            {{-- START: TEKS INSTRUKSI BARU DITAMBAHKAN DI SINI --}}
-            <p class="text-gray-300 text-sm mb-4">
-                Masukkan alamat email Anda (dipakai untuk login). Untuk mempercepat verifikasi, unggah juga dokumen bukti alumni (misal: KTM lama/sertifikat PKKMB).
-            </p>
-            {{-- END: TEKS INSTRUKSI BARU --}}
-
+            @include('auth._account_fields')
             <div>
-                <input type="email" id="email" name="email" placeholder="e-mail" required class="input-field mb-4 @error('email') border-red-500 @enderror" value="{{ old('email') }}">
-                @error('email')
-                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                @enderror
-                <label for="upload_doc" class="flex items-center justify-center border border-dashed border-gray-500 rounded-lg p-6 cursor-pointer text-gray-400 hover:border-blue-400 hover:text-blue-400 transition-colors @error('verification_doc') border-red-500 @enderror">
-                    <i class="fas fa-upload mr-3 text-lg"></i>
-                    <span class="text-center" id="upload_doc_text">degree / KTM / PKKMB certification / etc*</span>
-                    <input type="file" id="upload_doc" name="verification_doc" accept=".jpg,.jpeg,.png,.pdf" class="hidden">
-                </label>
-                <p class="text-gray-500 text-xs mt-2">*Maximum file size: 3 MB, maximum number of files: 1</p>
-                @error('verification_doc')
-                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                @enderror
+                <label for="email" class="mb-1 block text-sm font-medium text-navy-900">Email</label>
+                <input type="email" id="email" name="email" autocomplete="email" class="input @error('email') input-error @enderror" value="{{ old('email') }}" required>
+                <p class="mt-1 text-xs text-gray-500">Dipakai untuk masuk.</p>
+                @error('email') <p class="field-error">{{ $message }}</p> @enderror
             </div>
-        </div>
-        <div class="mt-8">
-            <button type="submit" class="btn-primary w-full">Register Now</button>
-            <p class="text-center text-sm mt-4">
-                Already have an account? <a href="{{ route('login') }}" class="text-link">Sign In</a>
-            </p>
-        </div>
+            <div>
+                <span class="mb-1 block text-sm font-medium text-navy-900">Dokumen bukti alumni <span class="font-normal text-gray-500">(opsional, mempercepat verifikasi)</span></span>
+                <label for="upload_doc" class="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed px-4 py-4 text-sm transition hover:border-navy-700 hover:bg-navy-50 @error('verification_doc') border-red-500 @else border-navy-100 @enderror">
+                    <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-gold-100 text-navy-800"><i class="fas fa-upload"></i></span>
+                    <span>
+                        <span id="upload_doc_text" class="block font-medium text-navy-900">Ijazah, KTM lama, atau sertifikat PKKMB</span>
+                        <span class="text-xs text-gray-500">JPG, PNG, atau PDF · maks. 3 MB</span>
+                    </span>
+                    <input type="file" id="upload_doc" name="verification_doc" accept=".jpg,.jpeg,.png,.pdf" class="sr-only">
+                </label>
+                @error('verification_doc') <p class="field-error">{{ $message }}</p> @enderror
+            </div>
+            <button type="submit" class="btn-primary w-full">Daftar</button>
+        </form>
+
+        <p class="mt-6 text-center text-sm text-gray-600">
+            Sudah punya akun? <a href="{{ route('login') }}" class="text-link">Masuk</a>
+        </p>
     </div>
-    </form>
 </div>
+@endsection
 
 @push('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const uploadDocInput = document.getElementById('upload_doc');
-        const uploadDocText = document.getElementById('upload_doc_text');
-
-        if (uploadDocInput && uploadDocText) {
-            uploadDocInput.addEventListener('change', function() {
-                if (this.files && this.files.length > 0) {
-                    uploadDocText.textContent = this.files[0].name;
-                } else {
-                    uploadDocText.textContent = 'degree / KTM / PKKMB certification / etc*';
-                }
-            });
-        }
+    document.getElementById('upload_doc').addEventListener('change', function () {
+        document.getElementById('upload_doc_text').textContent = this.files[0]?.name ?? 'Ijazah, KTM lama, atau sertifikat PKKMB';
     });
 </script>
 @endpush
